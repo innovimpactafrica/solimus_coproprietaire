@@ -498,8 +498,8 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
             ),
             _buildNavItem(
               context,
-              'assets/icons/incident.svg',
-              'Incidents',
+              'assets/icons/travaux.svg',
+              'Demandes',
               active: true,
             ),
             _buildNavItem(
@@ -580,7 +580,7 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Incidents',
+                      'Demande de travaux',
                       style: GoogleFonts.inter(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -588,7 +588,7 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
                       ),
                     ),
                     Text(
-                      'Consultez et créez un incidents',
+                      'Consultez et créez une demande de travaux',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
@@ -639,7 +639,7 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Total incidents',
+                              'Total Demandes',
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w400,
@@ -740,6 +740,7 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
                                 'assets/icons/Filter.svg',
                                 width: 22,
                                 height: 22,
+                                colorFilter: const ColorFilter.mode(Color(0xFF6F675E), BlendMode.srcIn),
                               ),
                               if (_hasActiveFilter)
                                 Positioned(
@@ -763,7 +764,7 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'Liste des incidents',
+                    'Liste des demandes de travaux',
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,

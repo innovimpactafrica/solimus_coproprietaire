@@ -7,8 +7,13 @@ import 'reset_password.dart';
 
 class OtpVerificationPage extends StatefulWidget {
   final String email;
+  final bool isRegistration;
 
-  const OtpVerificationPage({super.key, required this.email});
+  const OtpVerificationPage({
+    super.key,
+    required this.email,
+    this.isRegistration = false,
+  });
 
   @override
   State<OtpVerificationPage> createState() => _OtpVerificationPageState();
@@ -38,15 +43,23 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
 
     setState(() => _isLoading = true);
     try {
-      final token = await AuthService.verifyResetCode(
-        emailOrPhone: widget.email,
-        code: code,
-      );
+      String? token;
+      if (widget.isRegistration) {
+        await AuthService.verifyCode(email: widget.email, code: code);
+      } else {
+        token = await AuthService.verifyResetCode(
+          emailOrPhone: widget.email,
+          code: code,
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).push(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) =>
-              ResetPasswordPage(email: widget.email, token: token),
+          pageBuilder: (_, __, ___) => ResetPasswordPage(
+            email: widget.email,
+            token: token ?? '',
+            isRegistration: widget.isRegistration,
+          ),
           transitionsBuilder: (_, anim, __, child) =>
               FadeTransition(opacity: anim, child: child),
           transitionDuration: const Duration(milliseconds: 300),
@@ -247,7 +260,15 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                 ),
                 const SizedBox(width: 4),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () async {
+                    try {
+                      await AuthService.forgotPassword(emailOrPhone: widget.email);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Code renvoyé')),
+                      );
+                    } catch (_) {}
+                  },
                   child: Text(
                     'Renvoyer',
                     style: GoogleFonts.beVietnamPro(

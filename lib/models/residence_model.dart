@@ -58,8 +58,8 @@ class ResidenceModel {
         longitude: (json['longitude'] as num?)?.toDouble(),
         photoUrl: json['photoUrl']?.toString(),
         lotsCount: (json['lotsCount'] as num?)?.toInt(),
-        constructionYear: (json['constructionYear'] as num?)?.toInt(),
-        renovationYear: (json['renovationYear'] as num?)?.toInt(),
+        constructionYear: (json['constructionYear'] as num?)?.toInt() ?? _yearFromDate(json['constructionDate']?.toString()),
+        renovationYear: (json['renovationYear'] as num?)?.toInt() ?? _yearFromDate(json['renovationDate']?.toString()),
         annualBudget: (json['annualBudget'] as num?)?.toDouble(),
         healthStatus: json['healthStatus']?.toString(),
         syndicId: (json['syndicId'] as num?)?.toInt(),
@@ -71,4 +71,9 @@ class ResidenceModel {
         createdAt: json['createdAt']?.toString(),
         updatedAt: json['updatedAt']?.toString(),
       );
+
+  static int? _yearFromDate(String? date) {
+    if (date == null || date.isEmpty) return null;
+    try { return DateTime.parse(date).year; } catch (_) { return null; }
+  }
 }

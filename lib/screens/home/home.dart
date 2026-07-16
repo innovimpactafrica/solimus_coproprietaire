@@ -3,17 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/dashboard_model.dart';
-import '../../models/charge_model.dart';
 import '../../models/meeting_model.dart';
 import '../../services/auth_storage.dart';
 import '../../services/coowner_service.dart';
 import '../../services/user_session.dart';
+import '../auth/login.dart';
 import '../profil/profil.dart';
 import '../documents/mes_documents.dart';
 import '../charges/mes_charges.dart';
-import '../charges/charge_detail.dart';
 import '../incidents/mes_incidents.dart';
 import '../reunions/reunions.dart';
+
+enum _ChargeStatus { enAttente, enRetard, paye }
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -24,8 +25,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   DashboardModel? _dashboard;
-  String? _token;
   int? _selectedPropertyId;
+
+  String? _errorMessage;
 
   DashboardProperty? get _selectedProperty {
     if (_dashboard == null) return null;
@@ -44,18 +46,33 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadData() async {
+    setState(() => _errorMessage = null);
     try {
-      final results = await Future.wait([
-        CoOwnerService.getDashboard(),
-        AuthStorage.getToken(),
-      ]);
+      final dashboard = await CoOwnerService.getDashboard();
       if (!mounted) return;
       setState(() {
-        _dashboard = results[0] as DashboardModel;
-        _token = results[1] as String?;
-        _selectedPropertyId = (_dashboard as DashboardModel).selectedPropertyId;
+        _dashboard = dashboard;
+        _selectedPropertyId = dashboard.selectedPropertyId;
       });
-    } catch (_) {}
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString();
+      if (msg.contains('401') || msg.contains('403') || msg.contains('non autorisé') || msg.contains('Unauthorized')) {
+        await AuthStorage.clear();
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (_) => false,
+        );
+        return;
+      }
+      // Erreur 5xx = bug backend, on affiche la page vide plutôt qu'un écran d'erreur
+      if (msg.contains('500') || msg.contains('502') || msg.contains('503')) {
+        setState(() => _dashboard = null);
+        return;
+      }
+      setState(() => _errorMessage = msg);
+    }
   }
 
   void _showPropertyPicker() {
@@ -519,17 +536,17 @@ String _meetingStatusLabel(String status) {
     );
   }
 
-  ChargeStatus _mapStatus(String s) {
+  _ChargeStatus _mapStatus(String s) {
     switch (s.toUpperCase()) {
-      case 'PAYEE':     return ChargeStatus.paye;
-      case 'EN_RETARD': return ChargeStatus.enRetard;
-      default:          return ChargeStatus.enAttente;
+      case 'PAYEE':     return _ChargeStatus.paye;
+      case 'EN_RETARD': return _ChargeStatus.enRetard;
+      default:          return _ChargeStatus.enAttente;
     }
   }
 
-  Widget _buildStatusBadge(ChargeStatus status) {
+  Widget _buildStatusBadge(_ChargeStatus status) {
     switch (status) {
-      case ChargeStatus.enAttente:
+      case _ChargeStatus.enAttente:
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
@@ -546,7 +563,7 @@ String _meetingStatusLabel(String status) {
             ],
           ),
         );
-      case ChargeStatus.enRetard:
+      case _ChargeStatus.enRetard:
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
@@ -563,7 +580,7 @@ String _meetingStatusLabel(String status) {
             ],
           ),
         );
-      case ChargeStatus.paye:
+      case _ChargeStatus.paye:
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
@@ -618,26 +635,29 @@ String _meetingStatusLabel(String status) {
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 190,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.only(left: 16, right: 8),
-            children: _dashboard == null || _dashboard!.chargesEnAttente.isEmpty
-                ? [_buildChargeCard(ChargeModel(
-                    id: 0, allocationId: 0, title: 'Charges mensuelles',
-                    amount: 0, status: 'EN_ATTENTE'))]
-                : _dashboard!.chargesEnAttente.take(5).expand((c) => [
-                    _buildChargeCard(c),
-                    const SizedBox(width: 12),
-                  ]).toList(),
+        if (_dashboard == null || _dashboard!.chargesEnAttente.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text('Aucune charge en attente',
+                style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF6A7282))),
+          )
+        else
+          SizedBox(
+            height: 190,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(left: 16, right: 8),
+              children: _dashboard!.chargesEnAttente.take(5).expand((c) => [
+                _buildChargeCard(c),
+                const SizedBox(width: 12),
+              ]).toList(),
+            ),
           ),
-        ),
       ],
     );
   }
 
-  Widget _buildChargeCard(ChargeModel charge) {
+  Widget _buildChargeCard(DashboardCharge charge) {
     final status = _mapStatus(charge.status);
     return Container(
       width: 320,
@@ -666,7 +686,7 @@ String _meetingStatusLabel(String status) {
           ),
           const SizedBox(height: 6),
           Text(
-            [charge.residenceName, charge.propertyReference]
+            [charge.residenceName, charge.typeBien]
                 .where((e) => e != null && e.isNotEmpty).join(' • '),
             style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400, color: const Color(0xFF6A7282)),
           ),
@@ -999,8 +1019,8 @@ String _meetingStatusLabel(String status) {
               ),
             ),
             _buildNavItem(
-              'assets/icons/incident.svg',
-              'Incidents',
+              'assets/icons/travaux.svg',
+              'Demandes',
               onTap: () => Navigator.of(context).pushReplacement(
                 PageRouteBuilder(
                   pageBuilder: (c, a, s) => const MesIncidentsPage(),
@@ -1046,7 +1066,32 @@ String _meetingStatusLabel(String status) {
           ],
         ),
       ),
-      body: SingleChildScrollView(
+      body: _errorMessage != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF6A7282)),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _loadData,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6F675E),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                      ),
+                      child: Text('Réessayer', style: GoogleFonts.inter(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

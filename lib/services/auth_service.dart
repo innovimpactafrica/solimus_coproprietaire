@@ -7,7 +7,12 @@ String _extractApiError(http.Response response, String fallback) {
   try {
     final j = jsonDecode(response.body);
     if (j is Map) {
-      return (j['message'] ?? j['error'] ?? j['detail'] ?? fallback).toString();
+      final message = (j['message'] ?? j['error'] ?? j['detail'] ?? fallback).toString();
+      final details = j['details'];
+      if (details is List && details.isNotEmpty) {
+        return details.map((e) => e.toString()).join('\n');
+      }
+      return message;
     }
     if (j is String && j.isNotEmpty) return j;
   } catch (_) {

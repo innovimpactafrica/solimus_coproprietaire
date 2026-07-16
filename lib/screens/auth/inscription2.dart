@@ -6,6 +6,7 @@ import '../../models/residence_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/coowner_service.dart';
 import 'login.dart';
+import 'otp_verification.dart';
 
 class Inscription2Page extends StatefulWidget {
   final String firstName;
@@ -42,7 +43,7 @@ class _Inscription2PageState extends State<Inscription2Page> {
 
   Future<void> _loadResidences() async {
     try {
-      final residences = await CoOwnerService.getResidences();
+      final residences = await CoOwnerService.getPublicResidences();
       if (!mounted) return;
       setState(() {
         _residences = residences;
@@ -91,7 +92,7 @@ class _Inscription2PageState extends State<Inscription2Page> {
       _properties = [];
     });
     try {
-      final properties = await CoOwnerService.getProperties(residenceId);
+      final properties = await CoOwnerService.getPublicProperties(residenceId);
       if (!mounted) return;
       setState(() {
         _properties = properties;
@@ -138,8 +139,13 @@ class _Inscription2PageState extends State<Inscription2Page> {
       );
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-        (_) => false,
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationPage(
+            email: widget.email,
+            isRegistration: true,
+          ),
+        ),
+        (route) => false,
       );
     } catch (e) {
       if (!mounted) return;

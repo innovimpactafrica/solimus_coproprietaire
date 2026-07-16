@@ -10,8 +10,9 @@ enum ChargeStatus { enAttente, enRetard, paye }
 
 class ChargeDetailPage extends StatefulWidget {
   final int chargeId;
+  final String chargeType;
 
-  const ChargeDetailPage({super.key, required this.chargeId});
+  const ChargeDetailPage({super.key, required this.chargeId, required this.chargeType});
 
   @override
   State<ChargeDetailPage> createState() => _ChargeDetailPageState();
@@ -31,7 +32,7 @@ class _ChargeDetailPageState extends State<ChargeDetailPage> {
   Future<void> _loadDetail() async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      final detail = await CoOwnerService.getChargeDetail(widget.chargeId);
+      final detail = await CoOwnerService.getChargeDetail(widget.chargeType, widget.chargeId);
       if (!mounted) return;
       setState(() { _detail = detail; _isLoading = false; });
     } catch (e) {
@@ -194,7 +195,8 @@ class _ChargeDetailPageState extends State<ChargeDetailPage> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       isScrollControlled: true,
       builder: (_) => _PaymentSheetContent(
-        allocationId: d.idAllocation,
+        chargeId: d.idAllocation,
+        chargeType: d.type,
         chargeTitle: d.title,
         amount: _formatAmount(d.amount),
         pageNav: pageNav,
@@ -269,7 +271,7 @@ class _ChargeDetailPageState extends State<ChargeDetailPage> {
                                 children: [
                                   Text('Erreur de chargement', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFFDC2626))),
                                   const SizedBox(height: 6),
-                                  Text('ID envoyé: ${widget.chargeId}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF2D2520))),
+                                  Text('ID envoyé: ${widget.chargeType}/${widget.chargeId}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF2D2520))),
                                   const SizedBox(height: 4),
                                   Text(_error!, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF6A7282))),
                                   const SizedBox(height: 12),
@@ -437,7 +439,8 @@ class _ChargeDetailPageState extends State<ChargeDetailPage> {
 }
 
 class _PaymentSheetContent extends StatefulWidget {
-  final int allocationId;
+  final int chargeId;
+  final String chargeType;
   final String chargeTitle;
   final String amount;
   final NavigatorState pageNav;
@@ -445,7 +448,8 @@ class _PaymentSheetContent extends StatefulWidget {
   final VoidCallback onPaymentDone;
 
   const _PaymentSheetContent({
-    required this.allocationId,
+    required this.chargeId,
+    required this.chargeType,
     required this.chargeTitle,
     required this.amount,
     required this.pageNav,
@@ -473,7 +477,8 @@ class _PaymentSheetContentState extends State<_PaymentSheetContent> {
         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
         isScrollControlled: true,
         builder: (_) => _ConfirmationSheetContent(
-          allocationId: widget.allocationId,
+          chargeId: widget.chargeId,
+          chargeType: widget.chargeType,
           chargeTitle: widget.chargeTitle,
           amount: widget.amount,
           methodName: _methods[i].name,
@@ -581,7 +586,8 @@ class _PaymentMethod {
 }
 
 class _ConfirmationSheetContent extends StatefulWidget {
-  final int allocationId;
+  final int chargeId;
+  final String chargeType;
   final String chargeTitle;
   final String amount;
   final String methodName;
@@ -591,7 +597,8 @@ class _ConfirmationSheetContent extends StatefulWidget {
   final VoidCallback onPaymentDone;
 
   const _ConfirmationSheetContent({
-    required this.allocationId,
+    required this.chargeId,
+    required this.chargeType,
     required this.chargeTitle,
     required this.amount,
     required this.methodName,
@@ -613,7 +620,8 @@ class _ConfirmationSheetContentState extends State<_ConfirmationSheetContent> {
     final sheetNav = Navigator.of(context);
     try {
       final result = await CoOwnerService.payCharge(
-        allocationId: widget.allocationId,
+        type: widget.chargeType,
+        id: widget.chargeId,
         method: widget.methodKey,
       );
       if (!mounted) return;

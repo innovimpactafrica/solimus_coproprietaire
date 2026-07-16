@@ -1,4 +1,3 @@
-import 'charge_model.dart';
 import 'meeting_model.dart';
 
 class DashboardProperty {
@@ -20,6 +19,36 @@ class DashboardProperty {
       );
 }
 
+class DashboardCharge {
+  final int id;
+  final String title;
+  final double amount;
+  final String? dueDate;
+  final String status;
+  final String? typeBien;
+  final String? residenceName;
+
+  const DashboardCharge({
+    required this.id,
+    required this.title,
+    required this.amount,
+    this.dueDate,
+    required this.status,
+    this.typeBien,
+    this.residenceName,
+  });
+
+  factory DashboardCharge.fromJson(Map<String, dynamic> json) => DashboardCharge(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        title: json['title']?.toString() ?? '',
+        amount: (json['amount'] as num?)?.toDouble() ?? 0,
+        dueDate: json['dueDate']?.toString(),
+        status: json['status']?.toString() ?? 'EN_ATTENTE',
+        typeBien: json['typeBien']?.toString(),
+        residenceName: json['residenceName']?.toString(),
+      );
+}
+
 class DashboardModel {
   final String firstName;
   final String lastName;
@@ -27,7 +56,7 @@ class DashboardModel {
   final List<DashboardProperty> properties;
   final int selectedPropertyId;
   final int totalDocuments;
-  final List<ChargeModel> chargesEnAttente;
+  final List<DashboardCharge> chargesEnAttente;
   final List<MeetingModel> prochainesReunions;
   final double soldeActuelResidence;
   final double montantArrieresResidence;
@@ -65,7 +94,7 @@ class DashboardModel {
         selectedPropertyId: (json['selectedPropertyId'] as num?)?.toInt() ?? 0,
         totalDocuments: (json['totalDocuments'] as num?)?.toInt() ?? 0,
         chargesEnAttente: (json['chargesEnAttente'] as List? ?? [])
-            .map((e) => ChargeModel.fromJson(e as Map<String, dynamic>))
+            .map((e) => DashboardCharge.fromJson(e as Map<String, dynamic>))
             .toList(),
         prochainesReunions: (json['prochainesReunions'] as List? ?? [])
             .map((e) => MeetingModel.fromJson(e as Map<String, dynamic>))

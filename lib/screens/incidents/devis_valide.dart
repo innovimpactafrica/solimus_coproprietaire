@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../models/charge_model.dart';
+import '../../models/intervention_model.dart';
 import '../../services/coowner_service.dart';
 import '../profil/touchpay_webview.dart';
 
@@ -14,12 +14,6 @@ class DevisValidePage extends StatefulWidget {
 }
 
 class _DevisValidPageState extends State<DevisValidePage> {
-
-  static const _methods = [
-    _PayMethod('Wave', 'WAVE', 'assets/images/wave.png'),
-    _PayMethod('Orange Money', 'ORANGE_MONEY', 'assets/images/om.png'),
-  ];
-
   void _showPaymentSheet(BuildContext context) {
     final pageNav = Navigator.of(context);
     final scaffoldMsg = ScaffoldMessenger.of(context);
@@ -691,7 +685,25 @@ class _AcomptePaymentSheetState extends State<_AcomptePaymentSheet> {
     _PayMethod('Orange Money', 'ORANGE_MONEY', 'assets/images/om.png'),
   ];
 
+  BalanceSummaryModel? _summary;
+  bool _loadingSummary = true;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSummary();
+  }
+
+  Future<void> _loadSummary() async {
+    try {
+      final s = await CoOwnerService.getBalanceSummary(widget.interventionId);
+      if (!mounted) return;
+      setState(() { _summary = s; _loadingSummary = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingSummary = false);
+    }
+  }
 
   Future<void> _onPay(String methodKey) async {
     setState(() => _submitting = true);
@@ -699,7 +711,7 @@ class _AcomptePaymentSheetState extends State<_AcomptePaymentSheet> {
     try {
       final result = await CoOwnerService.payAcompte(
         interventionId: widget.interventionId,
-        montant: 0, // montant récupéré depuis le devis une fois l'API liste-devis intégrée
+        montant: _summary?.soldeRestant ?? 0,
         methode: methodKey,
       );
       if (!mounted) return;
@@ -742,7 +754,14 @@ class _AcomptePaymentSheetState extends State<_AcomptePaymentSheet> {
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerLeft,
-            child: Text('Choisissez votre méthode de paiement', style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF6A7282))),
+            child: _loadingSummary
+                ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6F675E)))
+                : Text(
+                    _summary != null
+                        ? 'Montant : ${_summary!.soldeRestant.toInt()} FCFA'
+                        : 'Choisissez votre méthode de paiement',
+                    style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF6A7282)),
+                  ),
           ),
           const SizedBox(height: 20),
           ..._methods.map((m) => Padding(
@@ -751,7 +770,7 @@ class _AcomptePaymentSheetState extends State<_AcomptePaymentSheet> {
               width: double.infinity,
               height: 64,
               child: ElevatedButton(
-                onPressed: _submitting ? null : () => _onPay(m.key),
+                onPressed: (_submitting || _loadingSummary) ? null : () => _onPay(m.key),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: const Color(0xFF2D2520),

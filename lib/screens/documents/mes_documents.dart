@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../models/document_model.dart';
-import '../../services/auth_storage.dart';
 import '../../services/coowner_service.dart';
 
 class MesDocumentsPage extends StatefulWidget {
@@ -173,9 +172,9 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
   }
 
   Future<void> _downloadDocument(DocumentModel doc) async {
-    if (doc.fileUrl == null || doc.fileUrl!.isEmpty) {
+    if (doc.source == null || doc.sourceId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('URL du document indisponible')),
+        const SnackBar(content: Text('Informations du document manquantes')),
       );
       return;
     }
@@ -183,24 +182,24 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
     setState(() => _downloading.add(doc.id));
 
     try {
-      final token = await AuthStorage.getToken();
-      final response = await http.get(
-        Uri.parse(doc.fileUrl!),
-        headers: {if (token != null) 'Authorization': 'Bearer $token'},
+      final downloadUrl = await CoOwnerService.getDocumentDownloadUrl(
+        source: doc.source!,
+        sourceId: doc.sourceId!,
+        fileName: doc.fileName,
       );
-      if (response.statusCode == 403) {
-        throw Exception('Accès refusé. Le fichier est protégé, contactez votre syndic.');
-      }
+
+      if (downloadUrl.isEmpty) throw Exception('URL de téléchargement invalide');
+
+      // L'URL pré-signée est déjà authentifiée, pas besoin du token Bearer
+      final response = await http.get(Uri.parse(downloadUrl));
+
       if (response.statusCode != 200) {
         throw Exception('Erreur HTTP ${response.statusCode}');
       }
 
       final dir = await getTemporaryDirectory();
-      final ext = doc.fileUrl!.contains('.')
-          ? doc.fileUrl!.split('.').last.split('?').first
-          : 'pdf';
       final safeName = doc.fileName.replaceAll(RegExp(r'[^\w\-.]'), '_');
-      final file = File('${dir.path}/$safeName.$ext');
+      final file = File('${dir.path}/$safeName');
       await file.writeAsBytes(response.bodyBytes);
 
       if (!mounted) return;
@@ -216,7 +215,7 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
       if (!mounted) return;
       setState(() => _downloading.remove(doc.id));
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Échec du téléchargement : $e')),
+        SnackBar(content: Text('\u00c9chec du t\u00e9l\u00e9chargement : ${e.toString().replaceAll('Exception: ', '')}')),
       );
     }
   }
@@ -351,6 +350,7 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
                   'assets/icons/Filter.svg',
                   width: 22,
                   height: 22,
+                  colorFilter: const ColorFilter.mode(Color(0xFF6F675E), BlendMode.srcIn),
                 ),
                 if (_hasActiveFilter)
                   Positioned(

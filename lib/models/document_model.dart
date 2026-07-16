@@ -3,6 +3,7 @@ class DocumentModel {
   final String fileName;
   final String? documentType;
   final String? source;
+  final int? sourceId;
   final String? date;
   final String? fileSize;
   final String? fileUrl;
@@ -12,6 +13,7 @@ class DocumentModel {
     required this.fileName,
     this.documentType,
     this.source,
+    this.sourceId,
     this.date,
     this.fileSize,
     this.fileUrl,
@@ -30,6 +32,7 @@ class DocumentModel {
         fileName: (json['fileName'] ?? json['name'] ?? '').toString(),
         documentType: json['documentType']?.toString(),
         source: json['source']?.toString(),
+        sourceId: (json['sourceId'] as num?)?.toInt(),
         date: (json['date'] ?? json['createdAt'] ?? json['uploadedAt'])?.toString(),
         fileSize: _formatSize(json['fileSizeKb'] ?? json['fileSize']),
         fileUrl: (json['fileUrl'] ?? json['url'] ?? json['filePath'])?.toString(),
@@ -49,8 +52,8 @@ class DocumentsResponse {
 
   factory DocumentsResponse.fromJson(Map<String, dynamic> json) =>
       DocumentsResponse(
-        totalPages: json['totalPages'] as int? ?? 0,
-        totalElements: json['totalElements'] as int? ?? 0,
+        totalPages: (json['totalPages'] as num?)?.toInt() ?? 0,
+        totalElements: (json['totalElements'] as num?)?.toInt() ?? 0,
         content: (json['content'] as List<dynamic>? ?? [])
             .map((e) => DocumentModel.fromJson(e as Map<String, dynamic>))
             .toList(),

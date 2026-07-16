@@ -132,7 +132,7 @@ class _InformationsPersonnellesPageState
         phone: phone,
         photoPath: _selectedPhotoPath,
       );
-      final fresh = await CoOwnerService.getProfile();
+      await CoOwnerService.getProfile();
       // Sauvegarder la photo localement (évite le problème d'auth Minio)
       if (_selectedPhotoPath != null) {
         await UserSession.instance.saveLocalPhoto(_selectedPhotoPath!);

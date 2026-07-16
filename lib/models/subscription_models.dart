@@ -1,8 +1,11 @@
+/// Convertit une chaîne ISO 8601 en DateTime. Retourne DateTime.now() si null ou invalide.
 DateTime _parseDate(String? s) {
   if (s == null || s.isEmpty) return DateTime.now();
   try { return DateTime.parse(s); } catch (_) { return DateTime.now(); }
 }
 
+/// Réponse renvoyée par l'API lors de l'initialisation d'un paiement d'abonnement.
+/// Contient l'URL de paiement à ouvrir dans le WebView.
 class PaymentInitResponse {
   final bool success;
   final String transactionReference;
@@ -25,6 +28,7 @@ class PaymentInitResponse {
       );
 }
 
+/// Représente une entrée dans l'historique des paiements d'abonnement.
 class PaymentHistory {
   final String reference;
   final String plan;
@@ -52,6 +56,8 @@ class PaymentHistory {
       );
 }
 
+/// Informations complètes sur l'abonnement du copropriétaire :
+/// plan, statut, dates d'activation/expiration, avantages et historique.
 class SubscriptionInfo {
   final String plan;
   final String status;

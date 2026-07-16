@@ -8,11 +8,13 @@ import 'password_success.dart';
 class ResetPasswordPage extends StatefulWidget {
   final String email;
   final String token;
+  final bool isRegistration;
 
   const ResetPasswordPage({
     super.key,
     required this.email,
     required this.token,
+    this.isRegistration = false,
   });
 
   @override
@@ -101,11 +103,19 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
     setState(() => _isLoading = true);
     try {
-      await AuthService.resetPassword(
-        token: widget.token,
-        newPassword: password,
-        confirmPassword: confirmPassword,
-      );
+      if (widget.isRegistration) {
+        await AuthService.setPassword(
+          email: widget.email,
+          password: password,
+          confirmPassword: confirmPassword,
+        );
+      } else {
+        await AuthService.resetPassword(
+          token: widget.token,
+          newPassword: password,
+          confirmPassword: confirmPassword,
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).push(
         PageRouteBuilder(
@@ -256,7 +266,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                             ),
                           )
                         : Text(
-                            'Réinitialiser le mot de passe',
+                            widget.isRegistration ? 'Créer le mot de passe' : 'Réinitialiser le mot de passe',
                             style: GoogleFonts.barlow(
                               fontWeight: FontWeight.w600,
                               fontSize: 18,

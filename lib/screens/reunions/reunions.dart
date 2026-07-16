@@ -154,13 +154,6 @@ class _ReunionPageState extends State<ReunionPage> {
     return m.meetingDate!;
   }
 
-  String _formatTime(MeetingModel m) {
-    if (m.meetingStartTime != null && m.meetingStartTime!.isNotEmpty) {
-      return m.meetingStartTime!;
-    }
-    return '';
-  }
-
   List<MeetingModel> _meetingsForDay(DateTime day) {
     final isoKey = '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
     if (_calendarMeetings.containsKey(isoKey)) return _calendarMeetings[isoKey]!;
@@ -306,7 +299,12 @@ class _ReunionPageState extends State<ReunionPage> {
                                     Container(
                                       width: 36,
                                       height: 36,
-                                      decoration: hasMeeting
+                                      decoration: isSelected
+                                          ? const BoxDecoration(
+                                              color: Color(0xFF6F675E),
+                                              shape: BoxShape.circle,
+                                            )
+                                          : hasMeeting
                                           ? const BoxDecoration(
                                               color: Color(0xFFF9C20A),
                                               shape: BoxShape.circle,
@@ -319,10 +317,12 @@ class _ReunionPageState extends State<ReunionPage> {
                                               '$day',
                                               style: GoogleFonts.inter(
                                                 fontSize: 14,
-                                                fontWeight: hasMeeting
+                                                fontWeight: (hasMeeting || isSelected)
                                                     ? FontWeight.w700
                                                     : FontWeight.w400,
-                                                color: hasMeeting
+                                                color: isSelected
+                                                    ? Colors.white
+                                                    : hasMeeting
                                                     ? Colors.white
                                                     : const Color(0xFF2D2520),
                                               ),
@@ -571,8 +571,8 @@ class _ReunionPageState extends State<ReunionPage> {
               ),
             ),
             _buildNavItem(
-              'assets/icons/incident.svg',
-              'Incidents',
+              'assets/icons/travaux.svg',
+              'Demandes',
               onTap: () => Navigator.of(context).pushReplacement(
                 PageRouteBuilder(
                   pageBuilder: (c, a, s) => const MesIncidentsPage(),

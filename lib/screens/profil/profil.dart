@@ -14,6 +14,7 @@ import '../incidents/mes_incidents.dart';
 import '../reunions/reunions.dart';
 import 'informations_personnelles.dart';
 import '../documents/mes_documents.dart';
+import '../profil/mes_signalements.dart';
 // import 'mon_abonnement.dart'; // ABONNEMENT - commenté temporairement
 
 class ProfilPage extends StatefulWidget {
@@ -138,25 +139,6 @@ class _ProfilPageState extends State<ProfilPage> {
     );
   }
 
-  Widget _infoRow(String iconPath, String text) {
-    return Row(
-      children: [
-        SvgPicture.asset(iconPath, width: 16, height: 16),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w400,
-            fontSize: 12,
-            height: 16 / 12,
-            letterSpacing: 0,
-            color: const Color(0xE5FFFFFF),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _menuCard({required Widget child}) {
     return Container(
       width: 365,
@@ -176,6 +158,7 @@ class _ProfilPageState extends State<ProfilPage> {
     Widget? trailing,
     VoidCallback? onTap,
     Color titleColor = const Color(0xFF2F3542),
+    double iconSize = 24,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -195,7 +178,7 @@ class _ProfilPageState extends State<ProfilPage> {
                 shape: BoxShape.circle,
               ),
               child: Center(
-                child: SvgPicture.asset(iconPath, width: 24, height: 24),
+                child: SvgPicture.asset(iconPath, width: iconSize, height: iconSize),
               ),
             ),
             const SizedBox(width: 12),
@@ -230,7 +213,7 @@ class _ProfilPageState extends State<ProfilPage> {
                 ],
               ),
             ),
-            if (trailing != null) trailing!,
+            if (trailing != null) trailing,
           ],
         ),
       ),
@@ -273,7 +256,7 @@ class _ProfilPageState extends State<ProfilPage> {
                     opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut), child: child),
                   transitionDuration: const Duration(milliseconds: 300),
                 ))),
-              _navItem(ctx, 'assets/icons/incident.svg', 'Incidents',
+              _navItem(ctx, 'assets/icons/travaux.svg', 'Demandes',
                 onTap: () => Navigator.of(ctx).pushReplacement(PageRouteBuilder(
                   pageBuilder: (c, a, s) => const MesIncidentsPage(),
                   transitionsBuilder: (c, anim, s, child) => FadeTransition(
@@ -393,6 +376,20 @@ class _ProfilPageState extends State<ProfilPage> {
               trailing: const Icon(Icons.chevron_right, color: Color(0xFF2F3542), size: 20),
               onTap: () => Navigator.of(context).push(PageRouteBuilder(
                 pageBuilder: (c, a, s) => const MesDocumentsPage(),
+                transitionsBuilder: (c, anim, s, child) => FadeTransition(
+                  opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut), child: child),
+                transitionDuration: const Duration(milliseconds: 300),
+              )),
+            )),
+            const SizedBox(height: 9),
+            _menuCard(child: _menuItem(
+              iconPath: 'assets/icons/warn.svg',
+              title: 'Mes signalements',
+              iconBgColor: const Color(0x1A6F675E),
+              iconSize: 16,
+              trailing: const Icon(Icons.chevron_right, color: Color(0xFF2F3542), size: 20),
+              onTap: () => Navigator.of(context).push(PageRouteBuilder(
+                pageBuilder: (c, a, s) => const MesSignalementsPage(),
                 transitionsBuilder: (c, anim, s, child) => FadeTransition(
                   opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut), child: child),
                 transitionDuration: const Duration(milliseconds: 300),

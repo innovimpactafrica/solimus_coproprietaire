@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+/// WebView dédié au paiement TouchPay.
+/// Détecte automatiquement les URLs de succès/échec et retourne
+/// `true` (succès), `false` (échec) ou `null` (annulé) à la page appelante.
 class TouchPayWebViewPage extends StatefulWidget {
   final String url;
   const TouchPayWebViewPage({super.key, required this.url});
@@ -15,9 +18,11 @@ class _TouchPayWebViewPageState extends State<TouchPayWebViewPage> {
   WebViewController? _controller;
   bool _loading = true;
 
+  /// Retourne true si l'URL correspond à une page de succès de paiement.
   bool _isSuccess(String url) =>
       url.contains('payment-success') || url.contains('payment/success');
 
+  /// Retourne true si l'URL correspond à une page d'échec de paiement.
   bool _isFailure(String url) =>
       url.contains('payment-failed') || url.contains('payment/failed');
 
@@ -27,6 +32,8 @@ class _TouchPayWebViewPageState extends State<TouchPayWebViewPage> {
     _initWebView();
   }
 
+  /// Initialise le WebViewController avec le token d'auth injecté en localStorage
+  /// et les délégués de navigation pour détecter succès/échec.
   Future<void> _initWebView() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token') ?? '';

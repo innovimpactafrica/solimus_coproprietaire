@@ -193,18 +193,6 @@ class _MesChargesPageState extends State<MesChargesPage> {
     }
   }
 
-  String _formatDateLong(String? dateStr) {
-    if (dateStr == null) return '';
-    try {
-      final dt = DateTime.parse(dateStr);
-      const months = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-        'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-      return '${dt.day} ${months[dt.month]} ${dt.year}';
-    } catch (_) {
-      return dateStr;
-    }
-  }
-
   Widget _buildNavItem(
     BuildContext context,
     String iconPath,
@@ -652,8 +640,8 @@ class _MesChargesPageState extends State<MesChargesPage> {
             ),
             _buildNavItem(
               context,
-              'assets/icons/incident.svg',
-              'Incidents',
+              'assets/icons/travaux.svg',
+              'Demandes',
             ),
             _buildNavItem(
               context,
@@ -853,6 +841,7 @@ class _MesChargesPageState extends State<MesChargesPage> {
                                 'assets/icons/Filter.svg',
                                 width: 22,
                                 height: 22,
+                                colorFilter: const ColorFilter.mode(Color(0xFF6F675E), BlendMode.srcIn),
                               ),
                               if (_hasActiveFilter)
                                 Positioned(
@@ -906,7 +895,7 @@ class _MesChargesPageState extends State<MesChargesPage> {
                         return GestureDetector(
                           onTap: () => Navigator.of(ctx).push(
                             PageRouteBuilder(
-                              pageBuilder: (_, __, ___) => ChargeDetailPage(chargeId: c.allocationId),
+                              pageBuilder: (_, __, ___) => ChargeDetailPage(chargeId: c.allocationId, chargeType: c.type),
                               transitionsBuilder: (_, anim, __, child) =>
                                   FadeTransition(opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut), child: child),
                               transitionDuration: const Duration(milliseconds: 300),

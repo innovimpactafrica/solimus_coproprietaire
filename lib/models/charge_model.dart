@@ -2,6 +2,7 @@ class ChargeModel {
   final int id;
   final int allocationId;
   final String title;
+  final String type;
   final double amount;
   final String? dueDate;
   final String status;
@@ -13,6 +14,7 @@ class ChargeModel {
     required this.id,
     required this.allocationId,
     required this.title,
+    required this.type,
     required this.amount,
     this.dueDate,
     required this.status,
@@ -39,6 +41,7 @@ class ChargeModel {
         id: _toInt(json['idAllocation'] ?? json['id']),
         allocationId: _toInt(json['idAllocation'] ?? json['id']),
         title: (json['title'] ?? json['label'] ?? '').toString(),
+        type: (json['type'] ?? '').toString(),
         amount: _toDouble(json['amount']),
         dueDate: json['dueDate']?.toString(),
         status: (json['status'] ?? 'EN_ATTENTE').toString(),

@@ -99,6 +99,7 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (!mounted) return;
+
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => const HomePage(),

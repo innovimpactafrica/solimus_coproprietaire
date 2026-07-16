@@ -21,7 +21,7 @@ class CoOwnerService {
   }) async {
     final token = await AuthStorage.getToken();
     final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions/$interventionId/payer-acompte'),
+      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/deposit'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -46,7 +46,7 @@ class CoOwnerService {
   static Future<List<ResidenceModel>> getInterventionResidences() async {
     final token = await AuthStorage.getToken();
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions/residences'),
+      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/residences'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -65,7 +65,7 @@ class CoOwnerService {
   static Future<List<PropertyModel>> getInterventionProperties(int residenceId) async {
     final token = await AuthStorage.getToken();
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions/residences/$residenceId/properties'),
+      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/residences/$residenceId/properties'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -85,7 +85,7 @@ class CoOwnerService {
   static Future<List<SpecialtyModel>> getSpecialties() async {
     final token = await AuthStorage.getToken();
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions/specialties'),
+      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/specialties'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -102,7 +102,7 @@ class CoOwnerService {
   static Future<List<CommonFacilityModel>> getCommonFacilities(int residenceId) async {
     final token = await AuthStorage.getToken();
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions/residences/$residenceId/common-facilities'),
+      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/residences/$residenceId/common-facilities'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -138,13 +138,32 @@ class CoOwnerService {
     return list.map((e) => NearbyProviderModel.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  static Future<BalanceSummaryModel> getBalanceSummary(int interventionId) async {
+    final token = await AuthStorage.getToken();
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/balance-summary'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Impossible de charger le récapitulatif (${response.statusCode}): ${response.body}');
+    }
+
+    return BalanceSummaryModel.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
   static Future<ChargePaymentResponse> validerSolde({
     required int interventionId,
     required String methode,
   }) async {
     final token = await AuthStorage.getToken();
     final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions/$interventionId/valider-solde'),
+      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/balance'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -166,10 +185,12 @@ class CoOwnerService {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  static Future<List<QuoteModel>> getQuotes(int interventionId) async {
+  static Future<List<QuoteModel>> getQuotes(int interventionId, {int page = 0, int size = 50}) async {
     final token = await AuthStorage.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/quotes')
+        .replace(queryParameters: {'page': page.toString(), 'size': size.toString()});
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions/$interventionId/quotes'),
+      uri,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -189,7 +210,7 @@ class CoOwnerService {
   static Future<QuoteModel> getQuoteDetail(int interventionId, int quoteId) async {
     final token = await AuthStorage.getToken();
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions/$interventionId/quotes/$quoteId'),
+      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/quotes/$quoteId'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -210,7 +231,7 @@ class CoOwnerService {
   }) async {
     final token = await AuthStorage.getToken();
     final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions/$interventionId/accept-quote/$quoteId'),
+      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/quotes/$quoteId/accept'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -230,6 +251,34 @@ class CoOwnerService {
     return response.body;
   }
 
+  static Future<String> createReview({
+    required int interventionId,
+    required int rating,
+    String? comment,
+  }) async {
+    final token = await AuthStorage.getToken();
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/review'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'rating': rating, if (comment != null) 'comment': comment}),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String detail = response.body;
+      try {
+        final j = jsonDecode(response.body) as Map<String, dynamic>;
+        detail = j['message']?.toString() ?? j['error']?.toString() ?? response.body;
+      } catch (_) {}
+      throw Exception('Erreur création avis (${response.statusCode}): $detail');
+    }
+
+    return response.body;
+  }
+
   static Future<InterventionDetailModel> createIntervention({
     required String title,
     required String description,
@@ -243,6 +292,8 @@ class CoOwnerService {
     List<String> photos = const [],
   }) async {
     final token = await AuthStorage.getToken();
+
+    // Tous les paramètres sont en query string, les photos en multipart body
     final queryParams = <String, String>{
       'title': title,
       'description': description,
@@ -254,15 +305,17 @@ class CoOwnerService {
       if (commonFacilityId != null) 'commonFacilityId': commonFacilityId.toString(),
       if (managementMode != null) 'managementMode': managementMode,
     };
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions')
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions')
         .replace(queryParameters: queryParams);
 
     final request = http.MultipartRequest('POST', uri);
-    if (token != null) request.headers['Authorization'] = 'Bearer $token';
-    request.headers['Accept'] = 'application/json';
-
-    for (final photoPath in photos) {
-      request.files.add(await http.MultipartFile.fromPath('photos', photoPath));
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Accept'] = 'application/json';
+    }
+    for (final p in photos) {
+      request.files.add(await http.MultipartFile.fromPath('photos', p));
     }
 
     final streamed = await request.send();
@@ -277,6 +330,10 @@ class CoOwnerService {
       throw Exception('Erreur création intervention (${response.statusCode}): $detail');
     }
 
+    if (response.body.trim().isEmpty) {
+      return InterventionDetailModel(
+          id: 0, title: '', status: 'PENDING', photoUrls: [], timeline: []);
+    }
     return InterventionDetailModel.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
   }
@@ -284,7 +341,7 @@ class CoOwnerService {
   static Future<InterventionDetailModel> getInterventionDetail(int id) async {
     final token = await AuthStorage.getToken();
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions/$id'),
+      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$id'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -302,9 +359,10 @@ class CoOwnerService {
 
   static Future<InterventionsResponse> getInterventions({
     int page = 0,
-    int size = 20,
+    int size = 10,
     String? status,
     String? search,
+    int? residenceId,
   }) async {
     final token = await AuthStorage.getToken();
     final queryParams = <String, String>{
@@ -312,8 +370,9 @@ class CoOwnerService {
       'size': size.toString(),
       if (status != null) 'status': status,
       if (search != null && search.isNotEmpty) 'search': search,
+      if (residenceId != null) 'residenceId': residenceId.toString(),
     };
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions')
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions')
         .replace(queryParameters: queryParams);
     final response = await http.get(
       uri,
@@ -334,6 +393,7 @@ class CoOwnerService {
 
   static Future<DashboardModel> getDashboard() async {
     final token = await AuthStorage.getToken();
+    dev.log('Dashboard token: ${token != null ? "present (${token.length} chars)" : "null"}');
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/coowner/dashboard'),
       headers: {
@@ -343,12 +403,47 @@ class CoOwnerService {
       },
     );
 
+    dev.log('Dashboard status: ${response.statusCode}');
+    dev.log('Dashboard body: ${response.body.substring(0, response.body.length.clamp(0, 300))}');
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Impossible de charger le dashboard');
+      throw Exception('Impossible de charger le dashboard (${response.statusCode}): ${response.body}');
     }
 
     return DashboardModel.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  static Future<List<ResidenceModel>> getPublicResidences() async {
+    final response = await http
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/api/coowner/residences'),
+          headers: {'Accept': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Erreur ${response.statusCode}: ${response.body}');
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((e) => ResidenceModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  static Future<List<PropertyModel>> getPublicProperties(int residenceId) async {
+    final response = await http
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/api/coowner/residences/$residenceId/properties'),
+          headers: {'Accept': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Erreur ${response.statusCode}: ${response.body}');
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((e) => PropertyModel.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   static Future<List<ResidenceModel>> getResidences() async {
@@ -357,15 +452,17 @@ class CoOwnerService {
       Uri.parse('${ApiConfig.baseUrl}/api/coowner/residences'),
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       },
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Impossible de charger les résidences');
+      throw Exception('Impossible de charger les résidences (${response.statusCode}): ${response.body}');
     }
 
-    final list = jsonDecode(response.body) as List<dynamic>;
+    final decoded = jsonDecode(response.body);
+    final list = decoded is List ? decoded : (decoded['content'] as List? ?? decoded['residences'] as List? ?? []);
     return list
         .map((e) => ResidenceModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -378,15 +475,17 @@ class CoOwnerService {
           '${ApiConfig.baseUrl}/api/coowner/residences/$residenceId/properties'),
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       },
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Impossible de charger les appartements');
+      throw Exception('Impossible de charger les appartements (${response.statusCode}): ${response.body}');
     }
 
-    final list = jsonDecode(response.body) as List<dynamic>;
+    final decoded = jsonDecode(response.body);
+    final list = decoded is List ? decoded : (decoded['content'] as List? ?? decoded['properties'] as List? ?? []);
     return list
         .map((e) => PropertyModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -494,6 +593,8 @@ class CoOwnerService {
     int size = 20,
     String? status,
     String? search,
+    String? type,
+    int? residenceId,
   }) async {
     final token = await AuthStorage.getToken();
     final queryParams = <String, String>{
@@ -501,6 +602,8 @@ class CoOwnerService {
       'size': size.toString(),
       if (status != null) 'status': status,
       if (search != null && search.isNotEmpty) 'search': search,
+      if (type != null) 'type': type,
+      if (residenceId != null) 'residenceId': residenceId.toString(),
     };
 
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/charges')
@@ -535,7 +638,7 @@ class CoOwnerService {
     final token = await AuthStorage.getToken();
     final response = await http.get(
       Uri.parse(
-          '${ApiConfig.baseUrl}/api/coowner/charges/payment/$transactionRef/receipt'),
+          '${ApiConfig.baseUrl}/api/coowner/charges/receipt/$transactionRef'),
       headers: {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
@@ -551,12 +654,13 @@ class CoOwnerService {
   }
 
   static Future<ChargePaymentResponse> payCharge({
-    required int allocationId,
+    required String type,
+    required int id,
     required String method,
   }) async {
     final token = await AuthStorage.getToken();
     final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/api/coowner/charges/$allocationId/pay'),
+      Uri.parse('${ApiConfig.baseUrl}/api/coowner/charges/$type/$id/payment'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -578,7 +682,7 @@ class CoOwnerService {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  static Future<ChargeDetailModel> getChargeDetail(int id) async {
+  static Future<ChargeDetailModel> getChargeDetail(String type, int id) async {
     final token = await AuthStorage.getToken();
     final headers = {
       'Content-Type': 'application/json',
@@ -587,7 +691,7 @@ class CoOwnerService {
     };
 
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/coowner/charges/$id'),
+      Uri.parse('${ApiConfig.baseUrl}/api/coowner/charges/$type/$id'),
       headers: headers,
     );
 
@@ -603,6 +707,8 @@ class CoOwnerService {
     }
   }
 
+  /// Charge l'abonnement actuel du copropriétaire depuis l'API.
+  /// Lance une exception si le statut HTTP n'est pas 200.
   static Future<SubscriptionInfo> getSubscription() async {
     final token = await AuthStorage.getToken();
     final response = await http.get(
@@ -620,6 +726,10 @@ class CoOwnerService {
     throw Exception('Erreur chargement abonnement (${response.statusCode})');
   }
 
+  /// Initie une souscription Premium via l'API.
+  /// [moyenPaiement] : 'WAVE' ou 'ORANGE_MONEY'
+  /// [renouvellementAuto] : active le renouvellement automatique
+  /// Retourne un [PaymentInitResponse] contenant l'URL de paiement TouchPay.
   static Future<PaymentInitResponse> subscribeToPremium({
     required String moyenPaiement,
     required bool renouvellementAuto,
@@ -718,6 +828,36 @@ class CoOwnerService {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  static Future<String> getDocumentDownloadUrl({
+    required String source,
+    required int sourceId,
+    required String fileName,
+  }) async {
+    final token = await AuthStorage.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/documents/download-url')
+        .replace(queryParameters: {
+      'source': source,
+      'sourceId': sourceId.toString(),
+      'fileName': fileName,
+    });
+    dev.log('download-url → source=$source sourceId=$sourceId fileName=$fileName');
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+    dev.log('download-url ← ${response.statusCode}: ${response.body}');
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Impossible de générer l\'URL (${response.statusCode}): ${response.body}');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return json['downloadUrl'] as String? ?? '';
+  }
+
   static Future<DocumentsResponse> getDocuments({
     String? search,
     String? documentType,
@@ -743,16 +883,108 @@ class CoOwnerService {
       uri,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       },
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Impossible de charger les documents');
+      throw Exception('Impossible de charger les documents (${response.statusCode}): ${response.body}');
     }
 
     return DocumentsResponse.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  static Future<({List<SignalementModel> items, int totalElements})> getSignalements({
+    int page = 0,
+    int size = 50,
+    String? search,
+    String? status,
+    int? residenceId,
+  }) async {
+    final token = await AuthStorage.getToken();
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'size': size.toString(),
+      if (search != null && search.isNotEmpty) 'search': search,
+      if (status != null) 'status': status,
+      if (residenceId != null) 'residenceId': residenceId.toString(),
+    };
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/profile/signalements')
+        .replace(queryParameters: queryParams);
+    final response = await http.get(uri, headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Impossible de charger les signalements (${response.statusCode}): ${response.body}');
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final content = decoded['content'] as List? ?? [];
+    return (
+      items: content.map((e) => SignalementModel.fromJson(e as Map<String, dynamic>)).toList(),
+      totalElements: (decoded['totalElements'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  static Future<SignalementDetailModel> getSignalementDetail(int id) async {
+    final token = await AuthStorage.getToken();
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/coowner/profile/signalements/$id'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Impossible de charger le signalement (${response.statusCode}): ${response.body}');
+    }
+    return SignalementDetailModel.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  static Future<void> createSignalement({
+    required String title,
+    required String description,
+    required int residenceId,
+    int? propertyId,
+    int? commonFacilityId,
+    required String locationType,
+    required String urgencyLevel,
+    List<String> photos = const [],
+  }) async {
+    final token = await AuthStorage.getToken();
+    final queryParams = <String, String>{
+      'title': title,
+      'description': description,
+      'residenceId': residenceId.toString(),
+      'locationType': locationType,
+      'urgencyLevel': urgencyLevel,
+      if (propertyId != null) 'propertyId': propertyId.toString(),
+      if (commonFacilityId != null) 'commonFacilityId': commonFacilityId.toString(),
+    };
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/profile/signalements')
+        .replace(queryParameters: queryParams);
+    final request = http.MultipartRequest('POST', uri);
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Accept'] = 'application/json';
+    }
+    for (final p in photos) {
+      request.files.add(await http.MultipartFile.fromPath('photos', p));
+    }
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String detail = response.body;
+      try {
+        final j = jsonDecode(response.body) as Map<String, dynamic>;
+        detail = j['message']?.toString() ?? j['error']?.toString() ?? j['detail']?.toString() ?? response.body;
+      } catch (_) {}
+      throw Exception('Erreur création signalement (${response.statusCode}): $detail');
+    }
   }
 
   static Future<bool> getNotificationSettings() async {

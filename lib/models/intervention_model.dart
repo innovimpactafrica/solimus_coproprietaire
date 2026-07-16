@@ -65,6 +65,7 @@ class InterventionDetailModel {
   final InterventionProvider? selectedProvider;
   final List<InterventionTimelineStep> timeline;
   final String? createdAt;
+  final String? updatedAt;
   final String? startedAt;
   final String? finishedAt;
 
@@ -85,6 +86,7 @@ class InterventionDetailModel {
     this.selectedProvider,
     required this.timeline,
     this.createdAt,
+    this.updatedAt,
     this.startedAt,
     this.finishedAt,
   });
@@ -123,6 +125,7 @@ class InterventionDetailModel {
                 e as Map<String, dynamic>))
             .toList(),
         createdAt: json['createdAt']?.toString(),
+        updatedAt: json['updatedAt']?.toString(),
         startedAt: json['startedAt']?.toString(),
         finishedAt: json['finishedAt']?.toString(),
       );
@@ -130,15 +133,17 @@ class InterventionDetailModel {
 
 class QuoteLine {
   final String description;
-  final String? detail;
-  final double montant;
+  final double quantity;
+  final double unitPrice;
+  final double subtotal;
 
-  const QuoteLine({required this.description, this.detail, required this.montant});
+  const QuoteLine({required this.description, required this.quantity, required this.unitPrice, required this.subtotal});
 
   factory QuoteLine.fromJson(Map<String, dynamic> json) => QuoteLine(
         description: json['description']?.toString() ?? '',
-        detail: json['detail']?.toString(),
-        montant: (json['montant'] as num?)?.toDouble() ?? 0,
+        quantity: (json['quantity'] as num?)?.toDouble() ?? 0,
+        unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? 0,
+        subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0,
       );
 }
 
@@ -162,6 +167,7 @@ class QuoteModel {
   final double laborTotalAmount;
   final double materialTotalAmount;
   final double totalAmount;
+  final double? totalTTC;
   final String? estimatedDelayLabel;
   final String? additionalComments;
   final String status;
@@ -189,6 +195,7 @@ class QuoteModel {
     required this.laborTotalAmount,
     required this.materialTotalAmount,
     required this.totalAmount,
+    this.totalTTC,
     this.estimatedDelayLabel,
     this.additionalComments,
     required this.status,
@@ -208,22 +215,23 @@ class QuoteModel {
         providerCity: json['providerCity']?.toString(),
         providerPhone: json['providerPhone']?.toString(),
         providerEmail: json['providerEmail']?.toString(),
-        providerRating: (json['providerRating'] as num?)?.toDouble() ?? 0,
+        providerRating: (json['providerRating'] as num?)?.toDouble() ?? (json['rating'] as num?)?.toDouble() ?? 0,
         reviewCount: (json['reviewCount'] as num?)?.toInt() ?? 0,
         interventionCount: (json['interventionCount'] as num?)?.toInt(),
-        satisfactionRate: (json['satisfactionRate'] as num?)?.toDouble(),
-        avgInterventionTime: json['avgInterventionTime']?.toString(),
+        satisfactionRate: (json['satisfactionRate'] as num?)?.toDouble() ?? (json['satisfaction'] as num?)?.toDouble(),
+        avgInterventionTime: json['avgInterventionTime']?.toString() ?? (json['averageTimeHours'] != null ? '${json['averageTimeHours']}h' : null),
         scoreQualitePrix: (json['scoreQualitePrix'] as num?)?.toDouble(),
-        materialLines: (json['materialLines'] as List? ?? [])
+        materialLines: (json['materialLines'] as List? ?? json['materiaux'] as List? ?? [])
             .map((e) => QuoteLine.fromJson(e as Map<String, dynamic>)).toList(),
-        laborLines: (json['laborLines'] as List? ?? [])
+        laborLines: (json['laborLines'] as List? ?? json['mainOeuvre'] as List? ?? [])
             .map((e) => QuoteLine.fromJson(e as Map<String, dynamic>)).toList(),
-        laborTotalAmount: (json['laborTotalAmount'] as num?)?.toDouble() ?? 0,
-        materialTotalAmount: (json['materialTotalAmount'] as num?)?.toDouble() ?? 0,
+        laborTotalAmount: (json['laborTotalAmount'] as num?)?.toDouble() ?? (json['sousTotalMainOeuvre'] as num?)?.toDouble() ?? 0,
+        materialTotalAmount: (json['materialTotalAmount'] as num?)?.toDouble() ?? (json['sousTotalMateriaux'] as num?)?.toDouble() ?? 0,
         totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0,
+        totalTTC: (json['totalTTC'] as num?)?.toDouble(),
         estimatedDelayLabel: json['estimatedDelayLabel']?.toString(),
         additionalComments: json['additionalComments']?.toString(),
-        status: json['status']?.toString() ?? 'DRAFT',
+        status: json['status']?.toString() ?? json['quoteStatus']?.toString() ?? 'DRAFT',
         createdAt: json['createdAt']?.toString(),
         bestOffer: json['bestOffer'] as bool? ?? false,
         verified: json['verified'] as bool? ?? false,
@@ -234,7 +242,7 @@ class InterventionModel {
   final int id;
   final String title;
   final String? residenceName;
-  final String? typeBien;
+  final String? propertyReference;
   final String? commonFacilityName;
   final String? specialtyName;
   final String? specialtyIcon;
@@ -248,7 +256,7 @@ class InterventionModel {
     required this.id,
     required this.title,
     this.residenceName,
-    this.typeBien,
+    this.propertyReference,
     this.commonFacilityName,
     this.specialtyName,
     this.specialtyIcon,
@@ -260,7 +268,7 @@ class InterventionModel {
   });
 
   String get location {
-    final parts = [residenceName, typeBien ?? commonFacilityName]
+    final parts = [residenceName, propertyReference ?? commonFacilityName]
         .where((e) => e != null && e.isNotEmpty)
         .join(' • ');
     return parts.isNotEmpty ? parts : '—';
@@ -271,7 +279,7 @@ class InterventionModel {
         id: (json['id'] as num?)?.toInt() ?? 0,
         title: json['title']?.toString() ?? '',
         residenceName: json['residenceName']?.toString(),
-        typeBien: json['typeBien']?.toString(),
+        propertyReference: json['propertyReference']?.toString(),
         commonFacilityName: json['commonFacilityName']?.toString(),
         specialtyName: json['specialtyName']?.toString(),
         specialtyIcon: json['specialtyIcon']?.toString(),
@@ -287,11 +295,15 @@ class InterventionsResponse {
   final int totalIncidents;
   final int enCoursCount;
   final List<InterventionModel> interventions;
+  final int totalPages;
+  final int totalElements;
 
   const InterventionsResponse({
     required this.totalIncidents,
     required this.enCoursCount,
     required this.interventions,
+    required this.totalPages,
+    required this.totalElements,
   });
 
   factory InterventionsResponse.fromJson(Map<String, dynamic> json) {
@@ -300,11 +312,35 @@ class InterventionsResponse {
     return InterventionsResponse(
       totalIncidents: (json['totalIncidents'] as num?)?.toInt() ?? 0,
       enCoursCount: (json['enCoursCount'] as num?)?.toInt() ?? 0,
+      totalPages: (page['totalPages'] as num?)?.toInt() ?? 0,
+      totalElements: (page['totalElements'] as num?)?.toInt() ?? 0,
       interventions: content
           .map((e) => InterventionModel.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }
+}
+
+class BalanceSummaryModel {
+  final int interventionId;
+  final double montantDevis;
+  final double acompteVerse;
+  final double soldeRestant;
+
+  const BalanceSummaryModel({
+    required this.interventionId,
+    required this.montantDevis,
+    required this.acompteVerse,
+    required this.soldeRestant,
+  });
+
+  factory BalanceSummaryModel.fromJson(Map<String, dynamic> json) =>
+      BalanceSummaryModel(
+        interventionId: (json['interventionId'] as num?)?.toInt() ?? 0,
+        montantDevis: (json['montantDevis'] as num?)?.toDouble() ?? 0,
+        acompteVerse: (json['acompteVerse'] as num?)?.toDouble() ?? 0,
+        soldeRestant: (json['soldeRestant'] as num?)?.toDouble() ?? 0,
+      );
 }
 
 class NearbyProviderModel {
@@ -369,5 +405,108 @@ class CommonFacilityModel {
   factory CommonFacilityModel.fromJson(Map<String, dynamic> json) => CommonFacilityModel(
         id: (json['id'] as num?)?.toInt() ?? 0,
         label: json['label']?.toString() ?? '',
+      );
+}
+
+class SignalementModel {
+  final int id;
+  final String title;
+  final String? positionLabel;
+  final String? createdAt;
+  final String? urgencyLevel;
+  final String status;
+
+  const SignalementModel({
+    required this.id,
+    required this.title,
+    this.positionLabel,
+    this.createdAt,
+    this.urgencyLevel,
+    required this.status,
+  });
+
+  factory SignalementModel.fromJson(Map<String, dynamic> json) => SignalementModel(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        title: json['title']?.toString() ?? '',
+        positionLabel: json['positionLabel']?.toString(),
+        createdAt: json['createdAt']?.toString(),
+        urgencyLevel: json['urgencyLevel']?.toString(),
+        status: json['status']?.toString() ?? 'PENDING',
+      );
+}
+
+class SignalementHistoryEntry {
+  final String status;
+  final String label;
+  final String? changedByName;
+  final String? date;
+
+  const SignalementHistoryEntry({
+    required this.status,
+    required this.label,
+    this.changedByName,
+    this.date,
+  });
+
+  factory SignalementHistoryEntry.fromJson(Map<String, dynamic> json) =>
+      SignalementHistoryEntry(
+        status: json['status']?.toString() ?? '',
+        label: json['label']?.toString() ?? '',
+        changedByName: json['changedByName']?.toString(),
+        date: json['date']?.toString(),
+      );
+}
+
+class SignalementDetailModel {
+  final int id;
+  final String? reference;
+  final String title;
+  final String? residenceName;
+  final String? positionLabel;
+  final String? createdAt;
+  final String? urgencyLevel;
+  final String status;
+  final String? description;
+  final List<String> photoUrls;
+  final String? declaredByName;
+  final String? closingNote;
+  final List<SignalementHistoryEntry> history;
+
+  const SignalementDetailModel({
+    required this.id,
+    this.reference,
+    required this.title,
+    this.residenceName,
+    this.positionLabel,
+    this.createdAt,
+    this.urgencyLevel,
+    required this.status,
+    this.description,
+    required this.photoUrls,
+    this.declaredByName,
+    this.closingNote,
+    required this.history,
+  });
+
+  factory SignalementDetailModel.fromJson(Map<String, dynamic> json) =>
+      SignalementDetailModel(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        reference: json['reference']?.toString(),
+        title: json['title']?.toString() ?? '',
+        residenceName: json['residenceName']?.toString(),
+        positionLabel: json['positionLabel']?.toString(),
+        createdAt: json['createdAt']?.toString(),
+        urgencyLevel: json['urgencyLevel']?.toString(),
+        status: json['status']?.toString() ?? 'PENDING',
+        description: json['description']?.toString(),
+        photoUrls: (json['photoUrls'] as List? ?? [])
+            .map((e) => e?.toString() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList(),
+        declaredByName: json['declaredByName']?.toString(),
+        closingNote: json['closingNote']?.toString(),
+        history: (json['history'] as List? ?? [])
+            .map((e) => SignalementHistoryEntry.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
 }

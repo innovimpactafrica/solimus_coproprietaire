@@ -5,6 +5,9 @@ import '../../models/subscription_models.dart';
 import '../../services/coowner_service.dart';
 import 'touchpay_webview.dart';
 
+/// Page affichant l'abonnement actif du copropriétaire :
+/// carte résumé, avantages inclus et historique des paiements.
+/// Permet aussi de souscrire au plan Premium via un bottom sheet.
 class MonAbonnementPage extends StatefulWidget {
   const MonAbonnementPage({super.key});
 
@@ -24,6 +27,8 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
     _load();
   }
 
+  /// Charge les données d'abonnement depuis l'API.
+  /// Gère les cas : chargement, erreur, aucun abonnement actif.
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -44,6 +49,9 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
     }
   }
 
+  /// Affiche le bottom sheet de souscription Premium.
+  /// Appelle [CoOwnerService.subscribeToPremium] puis ouvre le WebView de paiement.
+  /// Met à jour l'abonnement si le paiement réussit.
   Future<void> _showPremiumSheet() async {
     int selectedMethod = 0;
     bool renouvAuto = true;
@@ -195,6 +203,7 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
     );
   }
 
+  /// Construit une tuile de méthode de paiement sélectionnable.
   Widget _methodTile(int index, String label, String imagePath, int selected, void Function(int) onSelect) {
     final bool isSelected = selected == index;
     return GestureDetector(
@@ -249,17 +258,20 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
     );
   }
 
+  /// Formate une date en "JJ Mois AAAA" (ex: 01 Janvier 2025).
   String _formatDate(DateTime d) {
     const months = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
     return '${d.day.toString().padLeft(2, '0')} ${months[d.month]} ${d.year}';
   }
 
+  /// Formate une date en version courte "JJ Mmm AAAA" (ex: 01 Jan 2025).
   String _formatDateShort(DateTime d) {
     const months = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
     return '${d.day.toString().padLeft(2, '0')} ${months[d.month]} ${d.year}';
   }
 
+  /// Formate un montant en FCFA avec séparateur de milliers (ex: 50 000 FCFA).
   String _formatAmount(double amount) {
     final str = amount.toInt().toString();
     final buf = StringBuffer();
@@ -270,6 +282,7 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
     return '${buf.toString()} FCFA';
   }
 
+  /// Convertit le code méthode API en libellé lisible (ex: ORANGE_MONEY → Orange Money).
   String _formatPaymentMethod(String raw) {
     switch (raw.toUpperCase()) {
       case 'WAVE':         return 'Wave';
@@ -278,6 +291,7 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
     }
   }
 
+  /// Construit une boîte d'information (activation, paiement) affichée sur la carte abonnement.
   Widget _infoBox(String iconPath, String label, String value, {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
@@ -306,6 +320,7 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
     );
   }
 
+  /// Construit une ligne de l'historique des paiements avec statut et montant.
   Widget _paymentRow(PaymentHistory p, {bool showDivider = true}) {
     final isPaid = p.statut.toUpperCase().contains('PAI') || p.statut.toUpperCase().contains('PAY');
     return Column(

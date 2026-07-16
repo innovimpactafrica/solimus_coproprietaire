@@ -21,6 +21,7 @@ class _IncidentDetailPageState extends State<IncidentDetailPage>
   InterventionDetailModel? _detail;
   List<QuoteModel> _quotes = [];
   bool _isLoading = true;
+  bool _syndicManagesQuotes = false;
 
   @override
   void initState() {
@@ -31,22 +32,32 @@ class _IncidentDetailPageState extends State<IncidentDetailPage>
 
   Future<void> _loadAll() async {
     try {
-      final results = await Future.wait([
-        CoOwnerService.getInterventionDetail(widget.interventionId),
-        CoOwnerService.getQuotes(widget.interventionId),
-      ]);
+      _detail = await CoOwnerService.getInterventionDetail(widget.interventionId);
       if (!mounted) return;
-      setState(() {
-        _detail = results[0] as InterventionDetailModel;
-        _quotes = results[1] as List<QuoteModel>;
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString()), duration: const Duration(seconds: 6)),
       );
+      return;
+    }
+    // Charger les devis séparément — une 403 signifie que le syndic gère les devis
+    try {
+      final quotes = await CoOwnerService.getQuotes(widget.interventionId);
+      if (!mounted) return;
+      setState(() => _quotes = quotes);
+    } catch (e) {
+      final msg = e.toString();
+      if (!msg.contains('403')) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), duration: const Duration(seconds: 6)),
+        );
+      }
+      // 403 = devis gérés par le syndic, on ignore silencieusement
+      if (msg.contains('403')) setState(() => _syndicManagesQuotes = true);
     }
   }
 
@@ -319,17 +330,7 @@ class _IncidentDetailPageState extends State<IncidentDetailPage>
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (_detail == null || _detail!.photoUrls.isEmpty)
-                  Row(
-                    children: [
-                      Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(10),
-                          child: Image.asset('assets/images/prob1.jpg', height: 120, fit: BoxFit.cover))),
-                      const SizedBox(width: 10),
-                      Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(10),
-                          child: Image.asset('assets/images/prob2.jpg', height: 120, fit: BoxFit.cover))),
-                    ],
-                  )
-                else
+                if (_detail != null && _detail!.photoUrls.isNotEmpty)
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
@@ -728,7 +729,18 @@ class _IncidentDetailPageState extends State<IncidentDetailPage>
             ),
           ),
           const SizedBox(height: 16),
-          if (_quotes.isEmpty)
+          if (_syndicManagesQuotes)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  'Les devis de cette intervention sont gérés par le syndic.',
+                  style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF6A7282)),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          else if (_quotes.isEmpty)
             Center(child: Text('Aucun devis reçu pour le moment', style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF6A7282))))
           else
             ...List.generate(_quotes.length, (i) {

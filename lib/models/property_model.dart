@@ -2,6 +2,7 @@ class PropertyModel {
   final int id;
   final String name;
   final String? reference;
+  final int? floor;
   final double? superficie;
   final String? type;
   final int? residenceId;
@@ -13,6 +14,7 @@ class PropertyModel {
     required this.id,
     required this.name,
     this.reference,
+    this.floor,
     this.superficie,
     this.type,
     this.residenceId,
@@ -31,8 +33,9 @@ class PropertyModel {
                 'Appt ${json['id']}')
             .toString(),
         reference: json['reference']?.toString(),
+        floor: (json['floor'] as num?)?.toInt(),
         superficie: (json['superficie'] as num?)?.toDouble(),
-        type: json['type']?.toString(),
+        type: json['typeName']?.toString() ?? json['type']?.toString(),
         residenceId: (json['residenceId'] as num?)?.toInt(),
         residenceName: json['residenceName']?.toString(),
         ownerId: (json['ownerId'] as num?)?.toInt(),
