@@ -42,14 +42,11 @@ class _ReunionPageState extends State<ReunionPage> {
 
   Future<void> _loadMeetings() async {
     try {
-      final results = await Future.wait([
-        CoOwnerService.getMeetings(),
-        CoOwnerService.getUpcomingMeetingsCount(),
-      ]);
+      final result = await CoOwnerService.getMeetings();
       if (!mounted) return;
       setState(() {
-        _meetings = results[0] as List<MeetingModel>;
-        _upcomingCount = results[1] as int;
+        _meetings = result.meetings;
+        _upcomingCount = result.upcomingCount;
         _isLoading = false;
       });
     } catch (e) {
@@ -76,21 +73,15 @@ class _ReunionPageState extends State<ReunionPage> {
     }
   }
 
-  // Type mapping helpers
-  String _typeLabel(String type) {
-    switch (type.toUpperCase()) {
-      case 'ASSEMBLEE_GENERALE': return 'Assemblée Générale';
-      case 'CONSEIL_SYNDICAL':   return 'Conseil Syndical';
-      case 'TECHNIQUE':          return 'Technique';
-      default:                   return type;
-    }
-  }
+  String _typeLabel(MeetingModel m) => m.typeLabel.isNotEmpty ? m.typeLabel : m.type;
 
   Color _typeColor(String type) {
     switch (type.toUpperCase()) {
       case 'ASSEMBLEE_GENERALE': return const Color(0xFFDC2626);
       case 'CONSEIL_SYNDICAL':   return const Color(0xFF2B7FFF);
       case 'TECHNIQUE':          return const Color(0xFF9B59B6);
+      case 'ORDINARY':           return const Color(0xFF2B7FFF);
+      case 'EXTRAORDINARY':      return const Color(0xFFDC2626);
       default:                   return const Color(0xFF6F675E);
     }
   }
@@ -100,34 +91,37 @@ class _ReunionPageState extends State<ReunionPage> {
       case 'ASSEMBLEE_GENERALE': return const Color(0xFFFFF0F0);
       case 'CONSEIL_SYNDICAL':   return const Color(0xFFEEF4FF);
       case 'TECHNIQUE':          return const Color(0xFFF5EEFF);
+      case 'ORDINARY':           return const Color(0xFFEEF4FF);
+      case 'EXTRAORDINARY':      return const Color(0xFFFFF0F0);
       default:                   return const Color(0x1A6F675E);
     }
   }
 
-  String _statusLabel(String status) {
-    switch (status.toUpperCase()) {
-      case 'A_VENIR':   return 'À venir';
-      case 'EN_COURS':  return 'En cours';
-      case 'TERMINEE':  return 'Terminée';
-      default:          return status;
-    }
-  }
+  String _statusLabel(MeetingModel m) => m.statusLabel.isNotEmpty ? m.statusLabel : m.status;
 
   Color _statusColor(String status) {
     switch (status.toUpperCase()) {
-      case 'A_VENIR':  return const Color(0xFF00A63E);
-      case 'EN_COURS': return const Color(0xFFE17100);
-      case 'TERMINEE': return const Color(0xFF6A7282);
-      default:         return const Color(0xFF6A7282);
+      case 'A_VENIR':   return const Color(0xFF00A63E);
+      case 'EN_COURS':  return const Color(0xFFE17100);
+      case 'TERMINEE':  return const Color(0xFF6A7282);
+      case 'DRAFT':     return const Color(0xFF6A7282);
+      case 'SCHEDULED': return const Color(0xFF00A63E);
+      case 'ONGOING':   return const Color(0xFFE17100);
+      case 'COMPLETED': return const Color(0xFF6A7282);
+      default:          return const Color(0xFF6A7282);
     }
   }
 
   Color _statusBg(String status) {
     switch (status.toUpperCase()) {
-      case 'A_VENIR':  return const Color(0xFFEFFFF6);
-      case 'EN_COURS': return const Color(0xFFFFF4E6);
-      case 'TERMINEE': return const Color(0xFFF3F4F6);
-      default:         return const Color(0xFFF3F4F6);
+      case 'A_VENIR':   return const Color(0xFFEFFFF6);
+      case 'EN_COURS':  return const Color(0xFFFFF4E6);
+      case 'TERMINEE':  return const Color(0xFFF3F4F6);
+      case 'DRAFT':     return const Color(0xFFF3F4F6);
+      case 'SCHEDULED': return const Color(0xFFEFFFF6);
+      case 'ONGOING':   return const Color(0xFFFFF4E6);
+      case 'COMPLETED': return const Color(0xFFF3F4F6);
+      default:          return const Color(0xFFF3F4F6);
     }
   }
 
@@ -501,8 +495,8 @@ class _ReunionPageState extends State<ReunionPage> {
             Wrap(
               spacing: 8,
               children: [
-                _buildTag(_typeLabel(m.type), _typeColor(m.type), _typeBg(m.type)),
-                _buildTag(_statusLabel(m.status), _statusColor(m.status), _statusBg(m.status)),
+                _buildTag(_typeLabel(m), _typeColor(m.type), _typeBg(m.type)),
+                _buildTag(_statusLabel(m), _statusColor(m.status), _statusBg(m.status)),
               ],
             ),
             if (m.meetingDate != null && m.meetingDate!.isNotEmpty)

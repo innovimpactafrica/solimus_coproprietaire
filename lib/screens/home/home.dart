@@ -9,7 +9,7 @@ import '../../services/coowner_service.dart';
 import '../../services/user_session.dart';
 import '../auth/login.dart';
 import '../profil/profil.dart';
-import '../documents/mes_documents.dart';
+import '../profil/nouveau_signalement.dart';
 import '../charges/mes_charges.dart';
 import '../incidents/mes_incidents.dart';
 import '../reunions/reunions.dart';
@@ -26,6 +26,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   DashboardModel? _dashboard;
   int? _selectedPropertyId;
+  List<MeetingModel> _meetings = [];
 
   String? _errorMessage;
 
@@ -53,8 +54,12 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _dashboard = dashboard;
         _selectedPropertyId = dashboard.selectedPropertyId;
+        _meetings = dashboard.prochainesReunions;
       });
+      print('=== CHARGES EN ATTENTE: ${dashboard.chargesEnAttente.length} ===');
+      print('=== REUNIONS: ${dashboard.prochainesReunions.length} ===');
     } catch (e) {
+      print('=== LOAD DATA ERROR: $e ===');
       if (!mounted) return;
       final msg = e.toString();
       if (msg.contains('401') || msg.contains('403') || msg.contains('non autorisé') || msg.contains('Unauthorized')) {
@@ -68,6 +73,7 @@ class _HomePageState extends State<HomePage> {
       }
       // Erreur 5xx = bug backend, on affiche la page vide plutôt qu'un écran d'erreur
       if (msg.contains('500') || msg.contains('502') || msg.contains('503')) {
+        if (!mounted) return;
         setState(() => _dashboard = null);
         return;
       }
@@ -471,66 +477,105 @@ String _meetingStatusLabel(String status) {
     );
   }
 
-  Widget _buildDocumentsBanner(BuildContext context) {
+  Widget _buildSignalementBanner(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
         PageRouteBuilder(
-          pageBuilder: (c, a, s) => const MesDocumentsPage(),
+          pageBuilder: (c, a, s) => const NouveauSignalementPage(),
           transitionsBuilder: (c, anim, s, child) => FadeTransition(
             opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
             child: child,
           ),
-          transitionDuration: const Duration(milliseconds: 300),
+          transitionDuration: Duration.zero,
         ),
       ),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        margin: const EdgeInsets.symmetric(horizontal: 23),
+        height: 100,
         decoration: BoxDecoration(
-          color: const Color(0xFF6F675E),
-          borderRadius: BorderRadius.circular(18),
+          color: const Color(0x1AF9C20A),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF9C20A), width: 1),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Voir mes documents',
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            children: [
+              // illus en fond à droite
+              Positioned(
+                right: 45,
+                top: 0,
+                bottom: 0,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: SvgPicture.asset(
+                    'assets/icons/illus.svg',
+                    width: 84,
+                    height: 96,
+                    fit: BoxFit.contain,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${_dashboard?.totalDocuments ?? 0} document${(_dashboard?.totalDocuments ?? 0) > 1 ? 's' : ''}',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.white.withValues(alpha: 0.65),
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                shape: BoxShape.circle,
               ),
-              child: Center(
-                child: SvgPicture.asset(
-                  'assets/icons/doc.svg',
-                  width: 24,
-                  height: 24,
+              // Contenu
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    // Textes à gauche
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Signaler un problème',
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFFF9C20A),
+                              height: 28 / 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Déclarez une réclamation, une nuisance\nou tout autre problème dans votre résidence.',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFF6B5744),
+                              height: 15 / 9,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Icône mégaphone à droite
+                    Transform.rotate(
+                      angle: 15 * 3.14159265 / 180,
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF9C20A),
+                          shape: BoxShape.circle,
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        child: Transform.rotate(
+                          angle: -15 * 3.14159265 / 180,
+                          child: SvgPicture.asset(
+                            'assets/icons/SVG.svg',
+                            width: 40,
+                            height: 40,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -647,7 +692,7 @@ String _meetingStatusLabel(String status) {
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.only(left: 16, right: 8),
-              children: _dashboard!.chargesEnAttente.take(5).expand((c) => [
+              children: _dashboard!.chargesEnAttente.take(2).expand((c) => [
                 _buildChargeCard(c),
                 const SizedBox(width: 12),
               ]).toList(),
@@ -749,6 +794,8 @@ String _meetingStatusLabel(String status) {
       case 'ASSEMBLEE_GENERALE': return const Color(0xFFDC2626);
       case 'CONSEIL_SYNDICAL':   return const Color(0xFF2B7FFF);
       case 'TECHNIQUE':          return const Color(0xFF9B59B6);
+      case 'ORDINARY':           return const Color(0xFF2B7FFF);
+      case 'EXTRAORDINARY':      return const Color(0xFFDC2626);
       default:                   return const Color(0xFF6F675E);
     }
   }
@@ -758,25 +805,35 @@ String _meetingStatusLabel(String status) {
       case 'ASSEMBLEE_GENERALE': return const Color(0xFFFFF0F0);
       case 'CONSEIL_SYNDICAL':   return const Color(0xFFEEF4FF);
       case 'TECHNIQUE':          return const Color(0xFFF5EEFF);
+      case 'ORDINARY':           return const Color(0xFFEEF4FF);
+      case 'EXTRAORDINARY':      return const Color(0xFFFFF0F0);
       default:                   return const Color(0x1A6F675E);
     }
   }
 
   Color _statusColor(String status) {
     switch (status.toUpperCase()) {
-      case 'A_VENIR':  return const Color(0xFF00A63E);
-      case 'EN_COURS': return const Color(0xFFE17100);
-      case 'TERMINEE': return const Color(0xFF6A7282);
-      default:         return const Color(0xFF6A7282);
+      case 'A_VENIR':   return const Color(0xFF00A63E);
+      case 'EN_COURS':  return const Color(0xFFE17100);
+      case 'TERMINEE':  return const Color(0xFF6A7282);
+      case 'DRAFT':     return const Color(0xFF6A7282);
+      case 'SCHEDULED': return const Color(0xFF00A63E);
+      case 'ONGOING':   return const Color(0xFFE17100);
+      case 'COMPLETED': return const Color(0xFF6A7282);
+      default:          return const Color(0xFF6A7282);
     }
   }
 
   Color _statusBg(String status) {
     switch (status.toUpperCase()) {
-      case 'A_VENIR':  return const Color(0xFFEFFFF6);
-      case 'EN_COURS': return const Color(0xFFFFF4E6);
-      case 'TERMINEE': return const Color(0xFFF3F4F6);
-      default:         return const Color(0xFFF3F4F6);
+      case 'A_VENIR':   return const Color(0xFFEFFFF6);
+      case 'EN_COURS':  return const Color(0xFFFFF4E6);
+      case 'TERMINEE':  return const Color(0xFFF3F4F6);
+      case 'DRAFT':     return const Color(0xFFF3F4F6);
+      case 'SCHEDULED': return const Color(0xFFEFFFF6);
+      case 'ONGOING':   return const Color(0xFFFFF4E6);
+      case 'COMPLETED': return const Color(0xFFF3F4F6);
+      default:          return const Color(0xFFF3F4F6);
     }
   }
 
@@ -863,7 +920,7 @@ String _meetingStatusLabel(String status) {
           ),
         ),
         const SizedBox(height: 12),
-        if (_dashboard == null || _dashboard!.prochainesReunions.isEmpty)
+        if (_meetings.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text('Aucune réunion à venir',
@@ -876,7 +933,7 @@ String _meetingStatusLabel(String status) {
             child: IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: _dashboard!.prochainesReunions.take(5).expand((m) => [
+                children: _meetings.expand((m) => [
                   SizedBox(width: 300, child: _buildMeetingCard(m)),
                   const SizedBox(width: 12),
                 ]).toList(),
@@ -904,8 +961,8 @@ String _meetingStatusLabel(String status) {
           Wrap(
             spacing: 8,
             children: [
-              _buildMeetingTag(_typeLabel(m.type), _typeColor(m.type), _typeBg(m.type)),
-              _buildMeetingTag(_meetingStatusLabel(m.status), _statusColor(m.status), _statusBg(m.status)),
+              _buildMeetingTag(m.typeLabel.isNotEmpty ? m.typeLabel : m.type, _typeColor(m.type), _typeBg(m.type)),
+              _buildMeetingTag(m.statusLabel.isNotEmpty ? m.statusLabel : _meetingStatusLabel(m.status), _statusColor(m.status), _statusBg(m.status)),
             ],
           ),
           if (m.meetingDate != null && m.meetingDate!.isNotEmpty)
@@ -1097,7 +1154,7 @@ String _meetingStatusLabel(String status) {
           children: [
             _buildHeader(),
             const SizedBox(height: 16),
-            _buildDocumentsBanner(context),
+            _buildSignalementBanner(context),
             const SizedBox(height: 24),
             _buildChargesSection(),
             const SizedBox(height: 24),

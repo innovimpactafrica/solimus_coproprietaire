@@ -5,9 +5,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../models/document_model.dart';
 import '../../services/coowner_service.dart';
+import '../../services/auth_storage.dart';
+import 'document_viewer.dart';
 
 class MesDocumentsPage extends StatefulWidget {
   const MesDocumentsPage({super.key});
@@ -18,15 +19,15 @@ class MesDocumentsPage extends StatefulWidget {
 
 class _MesDocumentsPageState extends State<MesDocumentsPage> {
   List<DocumentModel> _documents = [];
-  int _totalElements = 0;
+  int _totalCount = 0;
   bool _isLoading = true;
-  final Set<int> _downloading = {};
+  final Set<String> _downloading = {};
 
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
-  String? _typeFilter;
+  String? _categoryFilter;
 
-  bool get _hasActiveFilter => _typeFilter != null;
+  bool get _hasActiveFilter => _categoryFilter != null;
 
   @override
   void initState() {
@@ -46,12 +47,12 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
       final q = _searchController.text.trim();
       final result = await CoOwnerService.getDocuments(
         search: q.isEmpty ? null : q,
-        documentType: _typeFilter,
+        category: _categoryFilter,
       );
       if (!mounted) return;
       setState(() {
-        _documents = result.content;
-        _totalElements = result.totalElements;
+        _documents = result.documents;
+        _totalCount = result.totalCount;
         _isLoading = false;
       });
     } catch (e) {
@@ -72,22 +73,26 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (_) => StatefulBuilder(
         builder: (ctx, setSheetState) {
           final options = <String?, String>{
             null: 'Tous types',
-            'FACTURE': 'Facture',
+            'CONVOCATION': 'Convocation',
+            'FINANCIAL': 'Financier',
+            'REPORT': 'Rapport',
             'PV_AG': "PV d'AG",
-            'RAPPORT': 'Rapport',
-            'CONTRAT': 'Contrat',
+            'OTHER': 'Autre',
+            'Charges': 'Charges',
           };
           return Container(
             decoration: const BoxDecoration(
               color: Color(0xFFFAF9F4),
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-            child: Column(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 32),
+            child: SingleChildScrollView(
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -112,11 +117,11 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
                 ),
                 const SizedBox(height: 12),
                 ...options.entries.map((entry) {
-                  final isSelected = _typeFilter == entry.key;
+                  final isSelected = _categoryFilter == entry.key;
                   return GestureDetector(
                     onTap: () {
                       setSheetState(() {});
-                      setState(() => _typeFilter = entry.key);
+                      setState(() => _categoryFilter = entry.key);
                       Navigator.pop(ctx);
                       _loadDocuments();
                     },
@@ -165,6 +170,7 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
                 }),
               ],
             ),
+            ),
           );
         },
       ),
@@ -172,48 +178,64 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
   }
 
   Future<void> _downloadDocument(DocumentModel doc) async {
-    if (doc.source == null || doc.sourceId == null) {
+    print('[DOWNLOAD] fileName: ${doc.fileName}');
+    print('[DOWNLOAD] sourceType: ${doc.sourceType}');
+    print('[DOWNLOAD] sourceId: ${doc.sourceId}');
+    print('[DOWNLOAD] category: ${doc.category}');
+
+    final rawUrl = doc.fileUrl;
+    print('[DOWNLOAD] fileUrl: $rawUrl');
+
+    if (rawUrl == null || rawUrl.isEmpty) {
+      print('[DOWNLOAD] ERREUR: fileUrl est null ou vide');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Informations du document manquantes')),
+        const SnackBar(content: Text('URL du document manquante')),
       );
       return;
     }
 
-    setState(() => _downloading.add(doc.id));
+    final downloadUrl = rawUrl.startsWith('http') ? rawUrl : 'https://api.solimus.innovimpactdev.cloud/uploads/$rawUrl';
+    print('[DOWNLOAD] URL complète: $downloadUrl');
+
+    setState(() => _downloading.add(doc.fileName));
 
     try {
-      final downloadUrl = await CoOwnerService.getDocumentDownloadUrl(
-        source: doc.source!,
-        sourceId: doc.sourceId!,
-        fileName: doc.fileName,
+      print('[DOWNLOAD] Téléchargement HTTP...');
+      final token = await _getToken();
+      final response = await http.get(
+        Uri.parse(downloadUrl),
+        headers: {if (token != null) 'Authorization': 'Bearer $token'},
       );
-
-      if (downloadUrl.isEmpty) throw Exception('URL de téléchargement invalide');
-
-      // L'URL pré-signée est déjà authentifiée, pas besoin du token Bearer
-      final response = await http.get(Uri.parse(downloadUrl));
+      print('[DOWNLOAD] HTTP status: ${response.statusCode}');
+      print('[DOWNLOAD] Content-Type: ${response.headers['content-type']}');
+      print('[DOWNLOAD] Taille réponse: ${response.bodyBytes.length} bytes');
 
       if (response.statusCode != 200) {
         throw Exception('Erreur HTTP ${response.statusCode}');
       }
 
-      final dir = await getTemporaryDirectory();
       final safeName = doc.fileName.replaceAll(RegExp(r'[^\w\-.]'), '_');
-      final file = File('${dir.path}/$safeName');
+      final filePath = '${Directory.systemTemp.path}/$safeName';
+      print('[DOWNLOAD] Écriture fichier: $filePath');
+      final file = File(filePath);
       await file.writeAsBytes(response.bodyBytes);
 
       if (!mounted) return;
-      setState(() => _downloading.remove(doc.id));
+      setState(() => _downloading.remove(doc.fileName));
 
+      print('[DOWNLOAD] Ouverture fichier...');
       final result = await OpenFilex.open(file.path);
+      print('[DOWNLOAD] OpenFilex result: ${result.type} - ${result.message}');
       if (result.type != ResultType.done && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Impossible d\'ouvrir le fichier : ${result.message}')),
         );
       }
-    } catch (e) {
+    } catch (e, stack) {
+      print('[DOWNLOAD] EXCEPTION: $e');
+      print('[DOWNLOAD] STACK: $stack');
       if (!mounted) return;
-      setState(() => _downloading.remove(doc.id));
+      setState(() => _downloading.remove(doc.fileName));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('\u00c9chec du t\u00e9l\u00e9chargement : ${e.toString().replaceAll('Exception: ', '')}')),
       );
@@ -221,22 +243,20 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
   }
 
   String _formatTag(DocumentModel doc) {
-    if (doc.source != null) return doc.source!;
-    if (doc.documentType != null) return doc.documentType!;
-    return 'Document';
+    return doc.category ?? doc.sourceType ?? 'Document';
   }
 
   String _formatDate(DocumentModel doc) {
-    if (doc.date == null) return '';
+    if (doc.createdAt == null) return '';
     try {
-      final dt = DateTime.parse(doc.date!);
+      final dt = DateTime.parse(doc.createdAt!);
       const months = [
         'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
         'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'
       ];
       return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
     } catch (_) {
-      return doc.date!;
+      return doc.createdAt!;
     }
   }
 
@@ -374,9 +394,30 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
     );
   }
 
+  Future<String?> _getToken() => AuthStorage.getToken();
+
+  void _openViewer(DocumentModel doc) {
+    if (doc.fileUrl == null || doc.fileUrl!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('URL du document manquante')),
+      );
+      return;
+    }
+    final rawUrl = doc.fileUrl!;
+    print('[VIEWER] fileUrl brut: $rawUrl');
+    final fullUrl = rawUrl.startsWith('http') ? rawUrl : 'https://api.solimus.innovimpactdev.cloud/uploads/$rawUrl';
+    print('[VIEWER] URL finale: $fullUrl');
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => DocumentViewerPage(
+        fileName: doc.fileName,
+        fileUrl: fullUrl,
+      ),
+    ));
+  }
+
   Widget _buildDocumentCard(BuildContext context, DocumentModel doc) {
     return GestureDetector(
-      onTap: _downloading.contains(doc.id) ? null : () => _downloadDocument(doc),
+      onTap: () => _openViewer(doc),
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -432,7 +473,7 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
                           color: const Color(0xFF6A7282),
                         ),
                       ),
-                      if (doc.fileSize != null) ...[
+                      if (doc.fileSizeKb != null) ...[
                         Text(
                           '  ·  ',
                           style: GoogleFonts.inter(
@@ -441,7 +482,7 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
                           ),
                         ),
                         Text(
-                          doc.fileSize!,
+                          doc.sizeLabel,
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
@@ -475,7 +516,9 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
             ),
             const SizedBox(width: 12),
             GestureDetector(
-              onTap: _downloading.contains(doc.id) ? null : () => _downloadDocument(doc),
+              onTap: _downloading.contains(doc.fileName)
+                  ? null
+                  : () => _downloadDocument(doc),
               child: Container(
                 width: 40,
                 height: 40,
@@ -484,7 +527,7 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: _downloading.contains(doc.id)
+                  child: _downloading.contains(doc.fileName)
                       ? const SizedBox(
                           width: 18,
                           height: 18,
@@ -530,7 +573,7 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
                         _buildSearchBar(),
                         const SizedBox(height: 10),
                         Text(
-                          '$_totalElements documents',
+                          '$_totalCount documents',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,

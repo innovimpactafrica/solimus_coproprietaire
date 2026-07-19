@@ -45,20 +45,15 @@ class _ReunionDetailPageState extends State<ReunionDetailPage> {
     }
   }
 
-  String _typeLabel(String type) {
-    switch (type.toUpperCase()) {
-      case 'ASSEMBLEE_GENERALE': return 'Assemblée Générale';
-      case 'CONSEIL_SYNDICAL':   return 'Conseil Syndical';
-      case 'TECHNIQUE':          return 'Technique';
-      default:                   return type;
-    }
-  }
+  String _typeLabel(MeetingDetailModel d) => d.typeLabel.isNotEmpty ? d.typeLabel : d.type;
 
   Color _typeColor(String type) {
     switch (type.toUpperCase()) {
       case 'ASSEMBLEE_GENERALE': return const Color(0xFFDC2626);
       case 'CONSEIL_SYNDICAL':   return const Color(0xFF2B7FFF);
       case 'TECHNIQUE':          return const Color(0xFF9B59B6);
+      case 'ORDINARY':           return const Color(0xFF2B7FFF);
+      case 'EXTRAORDINARY':      return const Color(0xFFDC2626);
       default:                   return const Color(0xFF6F675E);
     }
   }
@@ -68,6 +63,8 @@ class _ReunionDetailPageState extends State<ReunionDetailPage> {
       case 'ASSEMBLEE_GENERALE': return const Color(0xFFFFF0F0);
       case 'CONSEIL_SYNDICAL':   return const Color(0xFFEEF4FF);
       case 'TECHNIQUE':          return const Color(0xFFF5EEFF);
+      case 'ORDINARY':           return const Color(0xFFEEF4FF);
+      case 'EXTRAORDINARY':      return const Color(0xFFFFF0F0);
       default:                   return const Color(0x1A6F675E);
     }
   }
@@ -301,7 +298,7 @@ class _ReunionDetailPageState extends State<ReunionDetailPage> {
                                           borderRadius: BorderRadius.circular(20),
                                           border: Border.all(color: _typeColor(d.type).withValues(alpha: 0.4)),
                                         ),
-                                        child: Text(_typeLabel(d.type),
+                                        child: Text(_typeLabel(d),
                                             style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: _typeColor(d.type))),
                                       ),
                                       if (d.meetingDate != null && d.meetingDate!.isNotEmpty)
@@ -315,8 +312,6 @@ class _ReunionDetailPageState extends State<ReunionDetailPage> {
                                         _buildInfoRow('assets/icons/3.svg', d.location!),
                                       if (d.organizerName != null && d.organizerName!.isNotEmpty)
                                         _buildInfoRow('assets/icons/4.svg', d.organizerName!),
-                                      if (d.mode != null && d.mode!.isNotEmpty)
-                                        _buildInfoRow('assets/icons/5.svg', d.mode!),
                                     ],
                                   ),
                                 ),
@@ -382,7 +377,7 @@ class _ReunionDetailPageState extends State<ReunionDetailPage> {
                                       children: [
                                         Text('Documents joints',
                                             style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF2D2520))),
-                                        Text('${d.documents.length} fichier(s)',
+                                        Text('${d.documentsTotalCount} fichier(s)',
                                             style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF6A7282))),
                                       ],
                                     ),

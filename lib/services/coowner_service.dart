@@ -403,8 +403,10 @@ class CoOwnerService {
       },
     );
 
+    print('=== DASHBOARD STATUS: ${response.statusCode} ===');
+    print('=== DASHBOARD BODY: ${response.body} ===');
     dev.log('Dashboard status: ${response.statusCode}');
-    dev.log('Dashboard body: ${response.body.substring(0, response.body.length.clamp(0, 300))}');
+    dev.log('Dashboard body: ${response.body.substring(0, response.body.length.clamp(0, 500))}');
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Impossible de charger le dashboard (${response.statusCode}): ${response.body}');
@@ -491,18 +493,24 @@ class CoOwnerService {
         .toList();
   }
 
-  static Future<MeetingDetailModel> getMeetingDetail(int meetingId) async {
+  static Future<MeetingDetailModel> getMeetingDetail(int meetingId, {int documentPage = 0, int documentSize = 10}) async {
     final token = await AuthStorage.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/meetings/$meetingId')
+        .replace(queryParameters: {
+      'documentPage': documentPage.toString(),
+      'documentSize': documentSize.toString(),
+    });
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/coowner/meetings/$meetingId'),
+      uri,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       },
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Impossible de charger le détail de la réunion');
+      throw Exception('Impossible de charger le détail de la réunion (${response.statusCode})');
     }
 
     return MeetingDetailModel.fromJson(
@@ -531,7 +539,7 @@ class CoOwnerService {
     required int month,
   }) async {
     final token = await AuthStorage.getToken();
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/meetings/calendar')
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/meetings/calendar/month')
         .replace(queryParameters: {
       'year': year.toString(),
       'month': month.toString(),
@@ -540,6 +548,7 @@ class CoOwnerService {
       uri,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       },
     );
@@ -547,45 +556,40 @@ class CoOwnerService {
       throw Exception('Impossible de charger le calendrier (${response.statusCode})');
     }
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final content = decoded['content'] as List? ?? [];
-    final result = <String, List<MeetingModel>>{};
-    for (final item in content) {
-      final date = item['date'] as String;
-      final meetings = (item['meetings'] as List? ?? [])
-          .map((e) => MeetingModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-      // Normaliser la clé en ISO "YYYY-MM-DD"
-      String isoDate = date;
-      if (date.contains('/')) {
-        final parts = date.split('/');
-        if (parts.length == 3) {
-          isoDate = '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
-        }
-      }
-      result[isoDate] = meetings;
-    }
-    return result;
+    final byDate = decoded['meetingsByDate'] as Map<String, dynamic>? ?? {};
+    return byDate.map((date, list) => MapEntry(
+      date,
+      (list as List).map((e) => MeetingModel.fromJson(e as Map<String, dynamic>)).toList(),
+    ));
   }
 
-  static Future<List<MeetingModel>> getMeetings() async {
+  static Future<({List<MeetingModel> meetings, int upcomingCount, int totalPages})> getMeetings({
+    int page = 0,
+    int size = 10,
+  }) async {
     final token = await AuthStorage.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/meetings')
+        .replace(queryParameters: {'page': page.toString(), 'size': size.toString()});
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/coowner/meetings'),
+      uri,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       },
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Impossible de charger les réunions');
+      throw Exception('Impossible de charger les réunions (${response.statusCode})');
     }
 
-    final decoded = jsonDecode(response.body);
-    final list = decoded is List ? decoded : (decoded['content'] as List? ?? decoded['meetings'] as List? ?? []);
-    return list
-        .map((e) => MeetingModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = decoded['meetings'] as List? ?? [];
+    return (
+      meetings: list.map((e) => MeetingModel.fromJson(e as Map<String, dynamic>)).toList(),
+      upcomingCount: (decoded['upcomingCount'] as num?)?.toInt() ?? 0,
+      totalPages: (decoded['totalPages'] as num?)?.toInt() ?? 1,
+    );
   }
 
   static Future<ChargesResponse> getCharges({
@@ -834,7 +838,7 @@ class CoOwnerService {
     required String fileName,
   }) async {
     final token = await AuthStorage.getToken();
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/documents/download-url')
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/meetings/$sourceId/documents/download-url')
         .replace(queryParameters: {
       'source': source,
       'sourceId': sourceId.toString(),
@@ -860,23 +864,19 @@ class CoOwnerService {
 
   static Future<DocumentsResponse> getDocuments({
     String? search,
-    String? documentType,
-    String? source,
+    String? category,
     int page = 0,
-    int size = 20,
-    String sort = 'date,desc',
+    int size = 10,
   }) async {
     final token = await AuthStorage.getToken();
     final queryParams = <String, String>{
       'page': page.toString(),
       'size': size.toString(),
-      'sort': sort,
       if (search != null && search.isNotEmpty) 'search': search,
-      if (documentType != null) 'documentType': documentType,
-      if (source != null) 'source': source,
+      if (category != null) 'category': category,
     };
 
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/documents')
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/profile/documents')
         .replace(queryParameters: queryParams);
 
     final response = await http.get(

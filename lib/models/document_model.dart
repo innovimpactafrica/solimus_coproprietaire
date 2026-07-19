@@ -1,60 +1,58 @@
 class DocumentModel {
-  final int id;
   final String fileName;
-  final String? documentType;
-  final String? source;
-  final int? sourceId;
-  final String? date;
-  final String? fileSize;
   final String? fileUrl;
+  final double? fileSizeKb;
+  final String? category;
+  final String? sourceType;
+  final int? sourceId;
+  final String? createdAt;
 
   const DocumentModel({
-    required this.id,
     required this.fileName,
-    this.documentType,
-    this.source,
-    this.sourceId,
-    this.date,
-    this.fileSize,
     this.fileUrl,
+    this.fileSizeKb,
+    this.category,
+    this.sourceType,
+    this.sourceId,
+    this.createdAt,
   });
 
-  static String? _formatSize(dynamic v) {
-    if (v == null) return null;
-    final kb = double.tryParse(v.toString());
-    if (kb == null) return v.toString();
-    if (kb >= 1024) return '${(kb / 1024).toStringAsFixed(1)} MB';
-    return '${kb.toInt()} KB';
+  String get sizeLabel {
+    if (fileSizeKb == null) return '';
+    if (fileSizeKb! >= 1024) return '${(fileSizeKb! / 1024).toStringAsFixed(1)} MB';
+    return '${fileSizeKb!.toInt()} KB';
   }
 
   factory DocumentModel.fromJson(Map<String, dynamic> json) => DocumentModel(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        fileName: (json['fileName'] ?? json['name'] ?? '').toString(),
-        documentType: json['documentType']?.toString(),
-        source: json['source']?.toString(),
+        fileName: json['fileName']?.toString() ?? '',
+        fileUrl: json['fileUrl']?.toString(),
+        fileSizeKb: (json['fileSizeKb'] as num?)?.toDouble(),
+        category: json['category']?.toString(),
+        sourceType: json['sourceType']?.toString(),
         sourceId: (json['sourceId'] as num?)?.toInt(),
-        date: (json['date'] ?? json['createdAt'] ?? json['uploadedAt'])?.toString(),
-        fileSize: _formatSize(json['fileSizeKb'] ?? json['fileSize']),
-        fileUrl: (json['fileUrl'] ?? json['url'] ?? json['filePath'])?.toString(),
+        createdAt: json['createdAt']?.toString(),
       );
 }
 
 class DocumentsResponse {
+  final int totalCount;
   final int totalPages;
-  final int totalElements;
-  final List<DocumentModel> content;
+  final int currentPage;
+  final List<DocumentModel> documents;
 
   const DocumentsResponse({
+    required this.totalCount,
     required this.totalPages,
-    required this.totalElements,
-    required this.content,
+    required this.currentPage,
+    required this.documents,
   });
 
   factory DocumentsResponse.fromJson(Map<String, dynamic> json) =>
       DocumentsResponse(
+        totalCount: (json['totalCount'] as num?)?.toInt() ?? 0,
         totalPages: (json['totalPages'] as num?)?.toInt() ?? 0,
-        totalElements: (json['totalElements'] as num?)?.toInt() ?? 0,
-        content: (json['content'] as List<dynamic>? ?? [])
+        currentPage: (json['currentPage'] as num?)?.toInt() ?? 0,
+        documents: (json['documents'] as List? ?? [])
             .map((e) => DocumentModel.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
