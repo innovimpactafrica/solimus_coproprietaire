@@ -42,19 +42,24 @@ class _ChargeDetailPageState extends State<ChargeDetailPage> {
   }
 
   ChargeStatus _mapStatus(String s) {
-    switch (s.toUpperCase()) {
-      case 'PAYEE':     return ChargeStatus.paye;
-      case 'EN_RETARD': return ChargeStatus.enRetard;
-      default:          return ChargeStatus.enAttente;
-    }
+    final upper = s.toUpperCase();
+    if (upper == 'PAYEE' || upper == 'PAYÉ' || upper == 'PAYE' || s == 'Payé') return ChargeStatus.paye;
+    if (upper == 'EN_RETARD' || upper == 'EN RETARD') return ChargeStatus.enRetard;
+    return ChargeStatus.enAttente;
   }
 
   String _formatAmount(double amount) {
-    final str = amount.toInt().toString();
+    final intPart = amount.truncate();
+    final decimals = amount - intPart;
+    final str = intPart.toString();
     final buf = StringBuffer();
     for (int i = 0; i < str.length; i++) {
       if (i > 0 && (str.length - i) % 3 == 0) buf.write(' ');
       buf.write(str[i]);
+    }
+    if (decimals > 0.001) {
+      buf.write(',');
+      buf.write((decimals * 100).round().toString().padLeft(2, '0'));
     }
     return buf.toString();
   }
@@ -308,7 +313,9 @@ class _ChargeDetailPageState extends State<ChargeDetailPage> {
                                     children: [
                                       SvgPicture.asset('assets/icons/calen.svg', width: 16, height: 16),
                                       const SizedBox(width: 8),
-                                      Text('Échéance: ${_formatDate(d.dueDate)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.white.withValues(alpha: 0.85))),
+                                      Expanded(
+                                        child: Text('Échéance: ${_formatDate(d.dueDate)}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.white.withValues(alpha: 0.85))),
+                                      ),
                                     ],
                                   ),
                                   if (d.residenceName != null || d.propertyReference != null) ...[
@@ -317,9 +324,11 @@ class _ChargeDetailPageState extends State<ChargeDetailPage> {
                                       children: [
                                         const Icon(Icons.location_on_outlined, size: 16, color: Colors.white70),
                                         const SizedBox(width: 8),
-                                        Text(
-                                          [d.residenceName, d.propertyReference].where((e) => e != null && e.isNotEmpty).join(' • '),
-                                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.white.withValues(alpha: 0.85)),
+                                        Expanded(
+                                          child: Text(
+                                            [d.residenceName, d.propertyReference].where((e) => e != null && e.isNotEmpty).join(' • '),
+                                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w400, color: Colors.white.withValues(alpha: 0.85)),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -339,7 +348,7 @@ class _ChargeDetailPageState extends State<ChargeDetailPage> {
                                   const SizedBox(height: 14),
                                   Text('Informations', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF2D2520))),
                                   const SizedBox(height: 4),
-                                  _infoRow('Type', Text(d.type, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF2D2520)))),
+                                  _infoRow('Type', Text(d.typeLabel ?? d.type, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF2D2520)))),
                                   if (d.period != null)
                                     _infoRow('Période', Text(d.period!, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF2D2520)))),
                                   _infoRow("Date d'émission", Text(_formatDate(d.createdAt), style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF2D2520)))),
@@ -412,21 +421,61 @@ class _ChargeDetailPageState extends State<ChargeDetailPage> {
                             ],
                             const SizedBox(height: 24),
                             if (status != ChargeStatus.paye)
-                              SizedBox(
-                                width: double.infinity,
-                                height: 56,
-                                child: ElevatedButton.icon(
-                                  onPressed: () => _showPaymentSheet(context, d),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFF9A826),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                                    elevation: 0,
-                                  ),
-                                  icon: SvgPicture.asset('assets/icons/charges.svg', width: 20, height: 20, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
-                                  label: Text('Payer cette charge', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                                ),
-                              ),
+                              d.paymentBlocked
+                                  ? Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFF0F0),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.35)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.lock_outline_rounded, color: Color(0xFFDC2626), size: 22),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Paiement clôturé',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: const Color(0xFFDC2626),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'Cette charge est clôturée. Aucun paiement n\'est désormais possible.',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w400,
+                                                    color: const Color(0xFF6A7282),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : SizedBox(
+                                      width: double.infinity,
+                                      height: 56,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () => _showPaymentSheet(context, d),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFFF9A826),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                                          elevation: 0,
+                                        ),
+                                        icon: SvgPicture.asset('assets/icons/charges.svg', width: 20, height: 20, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+                                        label: Text('Payer cette charge', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                                      ),
+                                    ),
                             const SizedBox(height: 32),
                           ],
                         ),
@@ -585,6 +634,162 @@ class _PaymentMethod {
   const _PaymentMethod({required this.name, required this.subtitle, required this.imagePath, required this.methodKey});
 }
 
+class _PaymentFailedPage extends StatelessWidget {
+  final int chargeId;
+  final String chargeType;
+  final String chargeTitle;
+  final String amount;
+  final String methodName;
+  final String methodKey;
+  final NavigatorState pageNav;
+  final ScaffoldMessengerState scaffoldMsg;
+  final VoidCallback onPaymentDone;
+
+  const _PaymentFailedPage({
+    required this.chargeId,
+    required this.chargeType,
+    required this.chargeTitle,
+    required this.amount,
+    required this.methodName,
+    required this.methodKey,
+    required this.pageNav,
+    required this.scaffoldMsg,
+    required this.onPaymentDone,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: const BoxDecoration(color: Color(0xFFFFF0F0), shape: BoxShape.circle),
+                child: Center(
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                    child: const Icon(Icons.close_rounded, color: Colors.white, size: 40),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'Paiement non confirmé',
+                style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w700, color: const Color(0xFF2D2520)),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Votre paiement n\'a pas pu être confirmé par Wave/TouchPay. Aucun montant n\'a été débité et le statut de votre charge reste inchangé.',
+                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, height: 1.5, color: const Color(0xFF6A7282)),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    pageNav.push(PageRouteBuilder(
+                      pageBuilder: (_, __, ___) => _ConfirmationSheetWrapper(
+                        chargeId: chargeId,
+                        chargeType: chargeType,
+                        chargeTitle: chargeTitle,
+                        amount: amount,
+                        methodName: methodName,
+                        methodKey: methodKey,
+                        pageNav: pageNav,
+                        scaffoldMsg: scaffoldMsg,
+                        onPaymentDone: onPaymentDone,
+                      ),
+                      transitionsBuilder: (_, anim, __, child) => FadeTransition(
+                          opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut), child: child),
+                      transitionDuration: const Duration(milliseconds: 300),
+                    ));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF9A826),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                    elevation: 0,
+                  ),
+                  child: Text('Réessayer le paiement', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                    side: const BorderSide(color: Color(0xFF6F675E), width: 1),
+                  ),
+                  child: Text('Retour aux charges', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500, color: const Color(0xFF6A7282))),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ConfirmationSheetWrapper extends StatelessWidget {
+  final int chargeId;
+  final String chargeType;
+  final String chargeTitle;
+  final String amount;
+  final String methodName;
+  final String methodKey;
+  final NavigatorState pageNav;
+  final ScaffoldMessengerState scaffoldMsg;
+  final VoidCallback onPaymentDone;
+
+  const _ConfirmationSheetWrapper({
+    required this.chargeId,
+    required this.chargeType,
+    required this.chargeTitle,
+    required this.amount,
+    required this.methodName,
+    required this.methodKey,
+    required this.pageNav,
+    required this.scaffoldMsg,
+    required this.onPaymentDone,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: _ConfirmationSheetContent(
+          chargeId: chargeId,
+          chargeType: chargeType,
+          chargeTitle: chargeTitle,
+          amount: amount,
+          methodName: methodName,
+          methodKey: methodKey,
+          pageNav: pageNav,
+          scaffoldMsg: scaffoldMsg,
+          onPaymentDone: onPaymentDone,
+        ),
+      ),
+    );
+  }
+}
+
 class _ConfirmationSheetContent extends StatefulWidget {
   final int chargeId;
   final String chargeType;
@@ -615,9 +820,35 @@ class _ConfirmationSheetContent extends StatefulWidget {
 class _ConfirmationSheetContentState extends State<_ConfirmationSheetContent> {
   bool _submitting = false;
 
+  static String _formatReceiptAmount(double amount) {
+    final intPart = amount.truncate();
+    final decimals = amount - intPart;
+    final str = intPart.toString();
+    final buf = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) buf.write(' ');
+      buf.write(str[i]);
+    }
+    if (decimals > 0.001) {
+      buf.write(',');
+      buf.write((decimals * 100).round().toString().padLeft(2, '0'));
+    }
+    return buf.toString();
+  }
+
+  Future<PaymentStatusModel> _pollPaymentStatus(String reference) async {
+    PaymentStatusModel status = await CoOwnerService.getPaymentStatus(reference);
+    int attempts = 0;
+    while (status.status == 'PENDING' && attempts < 3) {
+      await Future.delayed(const Duration(seconds: 3));
+      status = await CoOwnerService.getPaymentStatus(reference);
+      attempts++;
+    }
+    return status;
+  }
+
   Future<void> _onConfirmer() async {
     setState(() => _submitting = true);
-    final sheetNav = Navigator.of(context);
     try {
       final result = await CoOwnerService.payCharge(
         type: widget.chargeType,
@@ -625,52 +856,64 @@ class _ConfirmationSheetContentState extends State<_ConfirmationSheetContent> {
         method: widget.methodKey,
       );
       if (!mounted) return;
-      sheetNav.pop();
 
-      const baseUrl = 'https://api.solimus.innovimpactdev.cloud';
-      final bridgeUrl = '$baseUrl/touchpay-bridge.html'
-          '?ref=${result.transactionReference}'
-          '&apiBaseUrl=$baseUrl';
+      Navigator.of(context).pop();
 
-      final webResult = await widget.pageNav.push<bool>(
+      final webViewResult = await widget.pageNav.push<bool>(
         MaterialPageRoute(
-          builder: (_) => TouchPayWebViewPage(url: bridgeUrl),
+          builder: (_) => TouchPayWebViewPage(url: result.paymentUrl),
         ),
       );
 
-      if (webResult == true) {
-        widget.onPaymentDone();
-        try {
-          final receipt = await CoOwnerService.getPaymentReceipt(result.transactionReference);
-          if (!mounted) return;
-          widget.pageNav.push(PageRouteBuilder(
-            pageBuilder: (_, __, ___) => PaiementSuccessPage(
-              amount: receipt.amount.toInt().toString(),
-              methodName: receipt.method,
-              chargeTitle: receipt.chargeTitle,
-              reference: receipt.reference,
-              paidAt: receipt.paidAt,
-            ),
-            transitionsBuilder: (_, anim, __, child) => FadeTransition(
-                opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
-                child: child),
-            transitionDuration: const Duration(milliseconds: 300),
-          ));
-        } catch (_) {
-          widget.scaffoldMsg.showSnackBar(
-            const SnackBar(
-              content: Text('Paiement effectué avec succès !'),
-              backgroundColor: Color(0xFF00A63E),
-            ),
-          );
-        }
-      } else if (webResult == false) {
-        widget.scaffoldMsg.showSnackBar(
-          const SnackBar(
-            content: Text('Paiement échoué. Veuillez réessayer.'),
-            backgroundColor: Colors.red,
+      // Dès que la WebView se ferme, on vérifie le statut réel
+      PaymentStatusModel? payStatus;
+      try {
+        payStatus = await _pollPaymentStatus(result.transactionReference);
+      } catch (_) {}
+
+      final st = payStatus?.status.toUpperCase() ?? '';
+
+      // Le succès est avéré SI et SEULEMENT SI la WebView a validé l'URL de succès OU le backend confirme le statut
+      final isSuccess = webViewResult == true ||
+          st == 'COMPLETED' ||
+          st == 'SUCCESS' ||
+          st == 'PAYEE' ||
+          st == 'PAID';
+
+      if (isSuccess) {
+        await widget.pageNav.push(PageRouteBuilder(
+          pageBuilder: (_, __, ___) => PaiementSuccessPage(
+            amount: _formatReceiptAmount(payStatus != null && payStatus.amount > 0 ? payStatus.amount : result.amount),
+            methodName: widget.methodName,
+            chargeTitle: widget.chargeTitle,
+            reference: payStatus != null && payStatus.reference.isNotEmpty ? payStatus.reference : result.transactionReference,
+            paidAt: payStatus?.paidAt ?? DateTime.now().toIso8601String(),
           ),
-        );
+          transitionsBuilder: (_, anim, __, child) => FadeTransition(
+              opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+              child: child),
+          transitionDuration: const Duration(milliseconds: 300),
+        ));
+        widget.onPaymentDone();
+      } else {
+        // Échec ou annulation explicite avant débit
+        await widget.pageNav.push(PageRouteBuilder(
+          pageBuilder: (_, __, ___) => _PaymentFailedPage(
+            chargeId: widget.chargeId,
+            chargeType: widget.chargeType,
+            chargeTitle: widget.chargeTitle,
+            amount: widget.amount,
+            methodName: widget.methodName,
+            methodKey: widget.methodKey,
+            pageNav: widget.pageNav,
+            scaffoldMsg: widget.scaffoldMsg,
+            onPaymentDone: widget.onPaymentDone,
+          ),
+          transitionsBuilder: (_, anim, __, child) => FadeTransition(
+              opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+              child: child),
+          transitionDuration: const Duration(milliseconds: 300),
+        ));
       }
     } catch (e) {
       if (!mounted) return;

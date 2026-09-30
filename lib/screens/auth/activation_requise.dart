@@ -47,36 +47,31 @@ class ActivationRequisePage extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: 332.95,
-                child: Text(
-                  'Veuillez activer votre abonnement pour accéder à la plateforme Solimus.',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w400,
-                    fontSize: 18,
-                    height: 28 / 18,
-                    color: const Color(0xFF696159),
-                  ),
-                  textAlign: TextAlign.center,
+              const SizedBox(height: 12),
+              Text(
+                'Veuillez activer votre abonnement pour accéder à la plateforme Solimus.',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 18,
+                  height: 28 / 18,
+                  color: const Color(0xFF696159),
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: 372.55,
-                child: Text(
-                  'Choisissez un pack et activez votre compte en quelques secondes.',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w400,
-                    fontSize: 14,
-                    height: 20 / 14,
-                    color: const Color(0xFF8B7355),
-                  ),
-                  textAlign: TextAlign.center,
+              Text(
+                'Choisissez un pack et activez votre compte en quelques secondes.',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 14,
+                  height: 20 / 14,
+                  color: const Color(0xFF8B7355),
                 ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
               SizedBox(
-                width: 362,
+                width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () {
@@ -122,8 +117,7 @@ class ActivationRequisePage extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Container(
-                width: 362,
-                height: 82,
+                width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),

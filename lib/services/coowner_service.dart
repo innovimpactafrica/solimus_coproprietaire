@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'api_client.dart';
 import 'api_config.dart';
 import 'auth_storage.dart';
 import '../models/charge_model.dart';
@@ -20,13 +22,14 @@ class CoOwnerService {
     required String methode,
   }) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/deposit'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       },
+      // Corps identique à Swagger
       body: jsonEncode({'montant': montant, 'methode': methode}),
     );
 
@@ -43,10 +46,28 @@ class CoOwnerService {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  static Future<List<ResidenceModel>> getInterventionResidences() async {
+  static Future<List<ResidenceModel>> getChargeResidences() async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/residences'),
+    final response = await ApiClient.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/coowner/charges/residences'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Impossible de charger les résidences (${response.statusCode}): ${response.body}');
+    }
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((e) => ResidenceModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  static Future<List<TravauManualResidence>> getInterventionResidences() async {
+    final token = await AuthStorage.getToken();
+    final url = '${ApiConfig.baseUrl}/api/owner/travaux-manual/residences';
+    final response = await ApiClient.get(
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -59,13 +80,14 @@ class CoOwnerService {
     }
 
     final list = jsonDecode(response.body) as List<dynamic>;
-    return list.map((e) => ResidenceModel.fromJson(e as Map<String, dynamic>)).toList();
+    return list.map((e) => TravauManualResidence.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   static Future<List<PropertyModel>> getInterventionProperties(int residenceId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/residences/$residenceId/properties'),
+    final url = '${ApiConfig.baseUrl}/api/owner/travaux-manual/residences/$residenceId/properties';
+    final response = await ApiClient.get(
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -84,8 +106,9 @@ class CoOwnerService {
 
   static Future<List<SpecialtyModel>> getSpecialties() async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/specialties'),
+    final url = '${ApiConfig.baseUrl}/api/owner/travaux/specialties';
+    final response = await ApiClient.get(
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -101,8 +124,9 @@ class CoOwnerService {
 
   static Future<List<CommonFacilityModel>> getCommonFacilities(int residenceId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/residences/$residenceId/common-facilities'),
+    final url = '${ApiConfig.baseUrl}/api/owner/travaux-manual/residences/$residenceId/common-facilities';
+    final response = await ApiClient.get(
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -121,7 +145,7 @@ class CoOwnerService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/interventions/nearby-providers')
         .replace(queryParameters: {'specialtyId': specialtyId.toString()});
 
-    final response = await http.get(
+    final response = await ApiClient.get(
       uri,
       headers: {
         'Content-Type': 'application/json',
@@ -140,7 +164,7 @@ class CoOwnerService {
 
   static Future<BalanceSummaryModel> getBalanceSummary(int interventionId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/balance-summary'),
       headers: {
         'Content-Type': 'application/json',
@@ -162,13 +186,14 @@ class CoOwnerService {
     required String methode,
   }) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/balance'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       },
+      // Corps identique à Swagger
       body: jsonEncode({'methode': methode}),
     );
 
@@ -189,7 +214,7 @@ class CoOwnerService {
     final token = await AuthStorage.getToken();
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/quotes')
         .replace(queryParameters: {'page': page.toString(), 'size': size.toString()});
-    final response = await http.get(
+    final response = await ApiClient.get(
       uri,
       headers: {
         'Content-Type': 'application/json',
@@ -209,7 +234,7 @@ class CoOwnerService {
 
   static Future<QuoteModel> getQuoteDetail(int interventionId, int quoteId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/quotes/$quoteId'),
       headers: {
         'Content-Type': 'application/json',
@@ -230,7 +255,7 @@ class CoOwnerService {
     required int quoteId,
   }) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/quotes/$quoteId/accept'),
       headers: {
         'Content-Type': 'application/json',
@@ -257,7 +282,7 @@ class CoOwnerService {
     String? comment,
   }) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$interventionId/review'),
       headers: {
         'Content-Type': 'application/json',
@@ -287,7 +312,6 @@ class CoOwnerService {
     int? commonFacilityId,
     required int specialtyId,
     required String locationType,
-    String? managementMode,
     required String urgencyLevel,
     List<String> photos = const [],
   }) async {
@@ -303,10 +327,9 @@ class CoOwnerService {
       'urgencyLevel': urgencyLevel,
       if (propertyId != null) 'propertyId': propertyId.toString(),
       if (commonFacilityId != null) 'commonFacilityId': commonFacilityId.toString(),
-      if (managementMode != null) 'managementMode': managementMode,
     };
 
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions')
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux-manual/interventions')
         .replace(queryParameters: queryParams);
 
     final request = http.MultipartRequest('POST', uri);
@@ -318,8 +341,7 @@ class CoOwnerService {
       request.files.add(await http.MultipartFile.fromPath('photos', p));
     }
 
-    final streamed = await request.send();
-    final response = await http.Response.fromStream(streamed);
+    final response = await ApiClient.sendMultipart(request);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       String detail = response.body;
@@ -340,8 +362,9 @@ class CoOwnerService {
 
   static Future<InterventionDetailModel> getInterventionDetail(int id) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions/$id'),
+    final url = '${ApiConfig.baseUrl}/api/owner/travaux-manual/interventions/$id';
+    final response = await ApiClient.get(
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -372,9 +395,9 @@ class CoOwnerService {
       if (search != null && search.isNotEmpty) 'search': search,
       if (residenceId != null) 'residenceId': residenceId.toString(),
     };
-    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux/interventions')
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/travaux-manual/interventions')
         .replace(queryParameters: queryParams);
-    final response = await http.get(
+    final response = await ApiClient.get(
       uri,
       headers: {
         'Content-Type': 'application/json',
@@ -391,29 +414,125 @@ class CoOwnerService {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  static Future<DashboardModel> getDashboard() async {
+  static Future<List<DashboardProperty>> getDashboardProperties() async {
     final token = await AuthStorage.getToken();
-    dev.log('Dashboard token: ${token != null ? "present (${token.length} chars)" : "null"}');
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/coowner/dashboard'),
+    final response = await ApiClient.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/coowner/dashboard/properties'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       },
     );
-
-    print('=== DASHBOARD STATUS: ${response.statusCode} ===');
-    print('=== DASHBOARD BODY: ${response.body} ===');
-    dev.log('Dashboard status: ${response.statusCode}');
-    dev.log('Dashboard body: ${response.body.substring(0, response.body.length.clamp(0, 500))}');
-
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Impossible de charger le dashboard (${response.statusCode}): ${response.body}');
+      throw Exception('Dashboard properties (${response.statusCode}): ${response.body}');
     }
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((e) => DashboardProperty.fromJson(e as Map<String, dynamic>)).toList();
+  }
 
-    return DashboardModel.fromJson(
-        jsonDecode(response.body) as Map<String, dynamic>);
+  static Future<DashboardHeader> getDashboardHeader() async {
+    final token = await AuthStorage.getToken();
+    final response = await ApiClient.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/coowner/dashboard/header'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Dashboard header (${response.statusCode}): ${response.body}');
+    }
+    return DashboardHeader.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  static Future<DashboardKpis> getDashboardKpis(int residenceId) async {
+    final token = await AuthStorage.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/dashboard/kpis')
+        .replace(queryParameters: {'residenceId': residenceId.toString()});
+    final response = await ApiClient.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Dashboard KPIs (${response.statusCode}): ${response.body}');
+    }
+    return DashboardKpis.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  static Future<DashboardNotificationsResponse> getDashboardNotifications({int page = 0, int size = 20}) async {
+    final token = await AuthStorage.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/dashboard/notifications')
+        .replace(queryParameters: {'page': page.toString(), 'size': size.toString()});
+    final response = await ApiClient.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Dashboard notifications (${response.statusCode}): ${response.body}');
+    }
+    return DashboardNotificationsResponse.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  static Future<void> markAllNotificationsRead() async {
+    final token = await AuthStorage.getToken();
+    final response = await http.patch(
+      Uri.parse('${ApiConfig.baseUrl}/api/coowner/dashboard/notifications/mark-all-read'),
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Mark all read (${response.statusCode}): ${response.body}');
+    }
+  }
+
+  static Future<List<DashboardPendingCharge>> getDashboardPendingCharges(int residenceId) async {
+    final token = await AuthStorage.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/dashboard/pending-charges')
+        .replace(queryParameters: {'residenceId': residenceId.toString()});
+    final response = await ApiClient.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Pending charges (${response.statusCode}): ${response.body}');
+    }
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((e) => DashboardPendingCharge.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  static Future<List<MeetingModel>> getDashboardUpcomingMeetings(int residenceId) async {
+    final token = await AuthStorage.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/dashboard/upcoming-meetings')
+        .replace(queryParameters: {'residenceId': residenceId.toString()});
+    final response = await ApiClient.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Upcoming meetings (${response.statusCode}): ${response.body}');
+    }
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((e) => MeetingModel.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   static Future<List<ResidenceModel>> getPublicResidences() async {
@@ -450,7 +569,7 @@ class CoOwnerService {
 
   static Future<List<ResidenceModel>> getResidences() async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse('${ApiConfig.baseUrl}/api/coowner/residences'),
       headers: {
         'Content-Type': 'application/json',
@@ -472,7 +591,7 @@ class CoOwnerService {
 
   static Future<List<PropertyModel>> getProperties(int residenceId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse(
           '${ApiConfig.baseUrl}/api/coowner/residences/$residenceId/properties'),
       headers: {
@@ -500,7 +619,7 @@ class CoOwnerService {
       'documentPage': documentPage.toString(),
       'documentSize': documentSize.toString(),
     });
-    final response = await http.get(
+    final response = await ApiClient.get(
       uri,
       headers: {
         'Content-Type': 'application/json',
@@ -517,9 +636,60 @@ class CoOwnerService {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
+  /// Déclarer sa présence physique à une réunion (POST /api/owner/meetings/{meetingId}/mark-present)
+  static Future<void> markMeetingPresent(int meetingId) async {
+    final token = await AuthStorage.getToken();
+    final url = '${ApiConfig.baseUrl}/api/owner/meetings/$meetingId/mark-present';
+    final response = await ApiClient.post(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String msg = 'Erreur lors de l\'enregistrement de la présence (${response.statusCode})';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded.containsKey('message')) {
+          msg = decoded['message'].toString();
+        }
+      } catch (_) {}
+      throw Exception(msg);
+    }
+  }
+
+  /// Donner procuration à un mandataire pour une réunion (POST /api/owner/meetings/{meetingId}/procuration)
+  static Future<void> giveMeetingProxy(int meetingId, String mandataireName) async {
+    final token = await AuthStorage.getToken();
+    final url = '${ApiConfig.baseUrl}/api/owner/meetings/$meetingId/procuration';
+    final response = await ApiClient.post(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'mandataireName': mandataireName,
+      }),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String msg = 'Erreur lors de l\'enregistrement de la procuration (${response.statusCode})';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded.containsKey('message')) {
+          msg = decoded['message'].toString();
+        }
+      } catch (_) {}
+      throw Exception(msg);
+    }
+  }
+
   static Future<int> getUpcomingMeetingsCount() async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse('${ApiConfig.baseUrl}/api/coowner/meetings/upcoming/count'),
       headers: {
         'Content-Type': 'application/json',
@@ -544,7 +714,7 @@ class CoOwnerService {
       'year': year.toString(),
       'month': month.toString(),
     });
-    final response = await http.get(
+    final response = await ApiClient.get(
       uri,
       headers: {
         'Content-Type': 'application/json',
@@ -570,7 +740,7 @@ class CoOwnerService {
     final token = await AuthStorage.getToken();
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/owner/meetings')
         .replace(queryParameters: {'page': page.toString(), 'size': size.toString()});
-    final response = await http.get(
+    final response = await ApiClient.get(
       uri,
       headers: {
         'Content-Type': 'application/json',
@@ -613,7 +783,7 @@ class CoOwnerService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/charges')
         .replace(queryParameters: queryParams);
 
-    final response = await http.get(
+    final response = await ApiClient.get(
       uri,
       headers: {
         'Content-Type': 'application/json',
@@ -637,10 +807,25 @@ class CoOwnerService {
     }
   }
 
+  static Future<PaymentStatusModel> getPaymentStatus(String reference) async {
+    final token = await AuthStorage.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/charges/payment-status')
+        .replace(queryParameters: {'reference': reference});
+    final response = await ApiClient.get(uri, headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    });
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Erreur statut paiement (${response.statusCode}): ${response.body}');
+    }
+    return PaymentStatusModel.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
   static Future<PaymentReceiptModel> getPaymentReceipt(
       String transactionRef) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse(
           '${ApiConfig.baseUrl}/api/coowner/charges/receipt/$transactionRef'),
       headers: {
@@ -663,13 +848,14 @@ class CoOwnerService {
     required String method,
   }) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse('${ApiConfig.baseUrl}/api/coowner/charges/$type/$id/payment'),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       },
+      // Corps identique à Swagger : uniquement "method"
       body: jsonEncode({'method': method}),
     );
 
@@ -694,7 +880,7 @@ class CoOwnerService {
       if (token != null) 'Authorization': 'Bearer $token',
     };
 
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse('${ApiConfig.baseUrl}/api/coowner/charges/$type/$id'),
       headers: headers,
     );
@@ -715,7 +901,7 @@ class CoOwnerService {
   /// Lance une exception si le statut HTTP n'est pas 200.
   static Future<SubscriptionInfo> getSubscription() async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse('${ApiConfig.baseUrl}/api/coproprietaire/subscription'),
       headers: {
         'Content-Type': 'application/json',
@@ -740,11 +926,11 @@ class CoOwnerService {
   }) async {
     final token = await AuthStorage.getToken();
     const successUrl =
-        'https://api.solimus.innovimpactdev.cloud/payment-success.html';
+        'https://api.solimus.sn/payment-success.html';
     const failedUrl =
-        'https://api.solimus.innovimpactdev.cloud/payment-failed.html';
+        'https://api.solimus.sn/payment-failed.html';
 
-    final response = await http.post(
+    final response = await ApiClient.post(
       Uri.parse('${ApiConfig.baseUrl}/api/coproprietaire/subscription/premium'),
       headers: {
         'Content-Type': 'application/json',
@@ -784,30 +970,64 @@ class CoOwnerService {
     String? photoPath,
   }) async {
     final token = await AuthStorage.getToken();
+    final cleanPhone = phone.trim().replaceAll(' ', '');
 
-    final uri =
-        Uri.parse('${ApiConfig.baseUrl}/api/coowner/profile').replace(
-      queryParameters: {
-        'firstName': firstName,
-        'lastName': lastName,
-        'phone': phone,
-      },
-    );
+    final queryParams = {
+      'firstName': firstName,
+      'lastName': lastName,
+      'phone': cleanPhone,
+    };
 
-    final request = http.MultipartRequest('PUT', uri);
-    if (token != null) {
-      request.headers['Authorization'] = 'Bearer $token';
-    }
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/profile').replace(queryParameters: queryParams);
+
+    http.Response response;
+
     if (photoPath != null) {
-      request.files
-          .add(await http.MultipartFile.fromPath('photo', photoPath));
+      final request = http.MultipartRequest('PUT', uri);
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+        request.headers['Accept'] = 'application/json';
+      }
+      request.fields['firstName'] = firstName;
+      request.fields['lastName'] = lastName;
+      request.fields['phone'] = cleanPhone;
+      request.files.add(await http.MultipartFile.fromPath('photo', photoPath));
+      response = await ApiClient.sendMultipart(request);
+    } else {
+      response = await ApiClient.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode >= 400 && response.statusCode != 401 && response.statusCode != 403) {
+        final request = http.MultipartRequest('PUT', uri);
+        if (token != null) {
+          request.headers['Authorization'] = 'Bearer $token';
+          request.headers['Accept'] = 'application/json';
+        }
+        request.fields['firstName'] = firstName;
+        request.fields['lastName'] = lastName;
+        request.fields['phone'] = cleanPhone;
+        response = await ApiClient.sendMultipart(request);
+      }
     }
 
-    final streamed = await request.send();
-    final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('Échec de la mise à jour du profil');
+      String detail = 'Échec de la mise à jour du profil';
+      try {
+        final j = jsonDecode(response.body) as Map<String, dynamic>;
+        detail = j['message']?.toString() ??
+            j['error']?.toString() ??
+            j['detail']?.toString() ??
+            (j['details'] is List && (j['details'] as List).isNotEmpty
+                ? (j['details'] as List).first.toString()
+                : response.body);
+      } catch (_) {}
+      throw Exception(detail);
     }
 
     return ProfileModel.fromJson(
@@ -816,7 +1036,7 @@ class CoOwnerService {
 
   static Future<ProfileModel> getProfile() async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse('${ApiConfig.baseUrl}/api/coowner/profile'),
       headers: {
         'Content-Type': 'application/json',
@@ -845,7 +1065,7 @@ class CoOwnerService {
       'fileName': fileName,
     });
     dev.log('download-url → source=$source sourceId=$sourceId fileName=$fileName');
-    final response = await http.get(
+    final response = await ApiClient.get(
       uri,
       headers: {
         'Content-Type': 'application/json',
@@ -879,7 +1099,7 @@ class CoOwnerService {
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/profile/documents')
         .replace(queryParameters: queryParams);
 
-    final response = await http.get(
+    final response = await ApiClient.get(
       uri,
       headers: {
         'Content-Type': 'application/json',
@@ -913,7 +1133,7 @@ class CoOwnerService {
     };
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/coowner/profile/signalements')
         .replace(queryParameters: queryParams);
-    final response = await http.get(uri, headers: {
+    final response = await ApiClient.get(uri, headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -931,7 +1151,7 @@ class CoOwnerService {
 
   static Future<SignalementDetailModel> getSignalementDetail(int id) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse('${ApiConfig.baseUrl}/api/coowner/profile/signalements/$id'),
       headers: {
         'Content-Type': 'application/json',
@@ -975,8 +1195,7 @@ class CoOwnerService {
     for (final p in photos) {
       request.files.add(await http.MultipartFile.fromPath('photos', p));
     }
-    final streamed = await request.send();
-    final response = await http.Response.fromStream(streamed);
+    final response = await ApiClient.sendMultipart(request);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       String detail = response.body;
       try {
@@ -989,7 +1208,7 @@ class CoOwnerService {
 
   static Future<bool> getNotificationSettings() async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(
+    final response = await ApiClient.get(
       Uri.parse('${ApiConfig.baseUrl}/api/account/notification-settings'),
       headers: {
         'Content-Type': 'application/json',
@@ -1005,13 +1224,52 @@ class CoOwnerService {
 
   static Future<void> updateNotificationSettings(bool enabled) async {
     final token = await AuthStorage.getToken();
-    await http.put(
-      Uri.parse('${ApiConfig.baseUrl}/api/account/notification-settings'),
+    final url = '${ApiConfig.baseUrl}/api/coowner/profile/notifications';
+    final response = await ApiClient.put(
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
       },
-      body: jsonEncode({'notificationsEnabled': enabled}),
     );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Impossible de modifier les notifications (${response.statusCode}): ${response.body}');
+    }
+  }
+
+  /// Modifie le mot de passe du copropriétaire (PUT /api/coowner/profile/change-password).
+  static Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final token = await AuthStorage.getToken();
+    final url = '${ApiConfig.baseUrl}/api/coowner/profile/change-password';
+    final response = await ApiClient.put(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      }),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String errorMessage = 'Mot de passe actuel incorrect ou confirmation invalide';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['message'] != null && body['message'].toString().isNotEmpty) {
+          errorMessage = body['message'].toString();
+        } else if (body['details'] is List && (body['details'] as List).isNotEmpty) {
+          errorMessage = (body['details'] as List).first.toString();
+        }
+      } catch (_) {}
+      throw Exception(errorMessage);
+    }
   }
 }

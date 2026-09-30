@@ -3,24 +3,28 @@ class ChargeModel {
   final int allocationId;
   final String title;
   final String type;
+  final String? typeLabel;
   final double amount;
   final String? dueDate;
   final String status;
   final int? propertyId;
   final String? residenceName;
   final String? propertyReference;
+  final bool paymentBlocked;
 
   const ChargeModel({
     required this.id,
     required this.allocationId,
     required this.title,
     required this.type,
+    this.typeLabel,
     required this.amount,
     this.dueDate,
     required this.status,
     this.propertyId,
     this.residenceName,
     this.propertyReference,
+    this.paymentBlocked = false,
   });
 
   static int _toInt(dynamic v) {
@@ -42,12 +46,14 @@ class ChargeModel {
         allocationId: _toInt(json['idAllocation'] ?? json['id']),
         title: (json['title'] ?? json['label'] ?? '').toString(),
         type: (json['type'] ?? '').toString(),
-        amount: _toDouble(json['amount']),
+        typeLabel: json['typeLabel']?.toString(),
+        amount: _toDouble(json['remainingAmount'] ?? json['amount']),
         dueDate: json['dueDate']?.toString(),
         status: (json['status'] ?? 'EN_ATTENTE').toString(),
         propertyId: json['propertyId'] == null ? null : _toInt(json['propertyId']),
         residenceName: json['residenceName']?.toString(),
         propertyReference: json['propertyReference']?.toString(),
+        paymentBlocked: json['paymentBlocked'] as bool? ?? false,
       );
 }
 
@@ -118,9 +124,10 @@ class ChargeLine {
 
 class ChargeDetailModel {
   final int idAllocation;
-  final String reference;
+  final String? reference;
   final String title;
   final String type;
+  final String? typeLabel;
   final double amount;
   final double totalAmount;
   final String? dueDate;
@@ -132,12 +139,14 @@ class ChargeDetailModel {
   final List<ChargeLine> lines;
   final List<String> documentUrls;
   final String? createdAt;
+  final bool paymentBlocked;
 
   const ChargeDetailModel({
     required this.idAllocation,
-    required this.reference,
+    this.reference,
     required this.title,
     required this.type,
+    this.typeLabel,
     required this.amount,
     required this.totalAmount,
     this.dueDate,
@@ -149,30 +158,55 @@ class ChargeDetailModel {
     required this.lines,
     required this.documentUrls,
     this.createdAt,
+    this.paymentBlocked = false,
   });
 
-  factory ChargeDetailModel.fromJson(Map<String, dynamic> json) =>
-      ChargeDetailModel(
-        idAllocation: (json['idAllocation'] as num? ?? json['id'] as num? ?? 0).toInt(),
+  factory ChargeDetailModel.fromJson(Map<String, dynamic> json) {
+    final rawLines = (json['breakdown'] ?? json['lines'] ?? []) as List;
+    return ChargeDetailModel(
+      idAllocation: (json['idAllocation'] as num? ?? json['id'] as num? ?? 0).toInt(),
+      reference: json['reference']?.toString(),
+      title: (json['title'] ?? json['typeLabel'] ?? json['type'] ?? '').toString(),
+      type: (json['type'] ?? '').toString(),
+      typeLabel: json['typeLabel']?.toString(),
+      amount: (json['remainingAmount'] as num? ?? json['amount'] as num?)?.toDouble() ?? 0,
+      totalAmount: (json['breakdownTotal'] as num? ?? json['totalAmount'] as num? ?? json['remainingAmount'] as num? ?? json['amount'] as num?)?.toDouble() ?? 0,
+      dueDate: json['dueDate']?.toString(),
+      status: (json['status'] ?? 'EN_ATTENTE').toString(),
+      period: json['period']?.toString(),
+      residenceName: json['residenceName']?.toString(),
+      propertyReference: json['propertyReference']?.toString(),
+      description: json['description']?.toString(),
+      lines: rawLines.map((e) => ChargeLine.fromJson(e as Map<String, dynamic>)).toList(),
+      documentUrls: (json['documentUrls'] as List? ?? [])
+          .map((e) => e?.toString() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toList(),
+      createdAt: (json['issuedDate'] ?? json['createdAt'])?.toString(),
+      paymentBlocked: json['paymentBlocked'] as bool? ?? false,
+    );
+  }
+}
+
+class PaymentStatusModel {
+  final String reference;
+  final String status; // COMPLETED, FAILED, PENDING
+  final double amount;
+  final String? paidAt;
+
+  const PaymentStatusModel({
+    required this.reference,
+    required this.status,
+    required this.amount,
+    this.paidAt,
+  });
+
+  factory PaymentStatusModel.fromJson(Map<String, dynamic> json) =>
+      PaymentStatusModel(
         reference: json['reference'] as String? ?? '',
-        title: json['title'] as String? ?? '',
-        type: json['type'] as String? ?? '',
+        status: (json['status'] as String? ?? 'PENDING').toUpperCase(),
         amount: (json['amount'] as num?)?.toDouble() ?? 0,
-        totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0,
-        dueDate: json['dueDate']?.toString(),
-        status: json['status'] as String? ?? 'EN_ATTENTE',
-        period: json['period']?.toString(),
-        residenceName: json['residenceName']?.toString(),
-        propertyReference: json['propertyReference']?.toString(),
-        description: json['description']?.toString(),
-        lines: (json['lines'] as List? ?? [])
-            .map((e) => ChargeLine.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        documentUrls: (json['documentUrls'] as List? ?? [])
-            .map((e) => e?.toString() ?? '')
-            .where((e) => e.isNotEmpty)
-            .toList(),
-        createdAt: json['createdAt']?.toString(),
+        paidAt: json['paidAt']?.toString(),
       );
 }
 
@@ -199,10 +233,11 @@ class ChargesResponse {
     final charges = rawList
         .map((e) => ChargeModel.fromJson(e as Map<String, dynamic>))
         .toList();
+    final summary = json['summary'] as Map<String, dynamic>?;
     return ChargesResponse(
-      totalAPayer: (json['totalAPayer'] as num?)?.toDouble() ?? 0,
-      chargesEnAttente: (json['chargesEnAttente'] as num?)?.toInt() ?? 0,
-      prochaineEcheance: json['prochaineEcheance']?.toString(),
+      totalAPayer: (summary?['totalToPay'] as num? ?? json['totalAPayer'] as num?)?.toDouble() ?? 0,
+      chargesEnAttente: (summary?['pendingCount'] as num? ?? json['chargesEnAttente'] as num?)?.toInt() ?? 0,
+      prochaineEcheance: summary?['nextDueDate']?.toString() ?? json['prochaineEcheance']?.toString(),
       charges: charges,
       totalPages: (json['totalPages'] as num?)?.toInt() ?? 0,
       totalElements: (json['totalElements'] as num?)?.toInt() ?? charges.length,

@@ -66,14 +66,34 @@ class _NouveauSignalementPageState extends State<NouveauSignalementPage> {
     }
   }
 
+  static const _fallbackFacilities = [
+    CommonFacilityModel(id: 1, label: 'Ascenseur'),
+    CommonFacilityModel(id: 2, label: 'Hall d\'entrée'),
+    CommonFacilityModel(id: 3, label: 'Parking / Garages'),
+    CommonFacilityModel(id: 4, label: 'Escaliers & Couloirs'),
+    CommonFacilityModel(id: 5, label: 'Jardin & Cour'),
+    CommonFacilityModel(id: 6, label: 'Toiture & Terrasse'),
+    CommonFacilityModel(id: 7, label: 'Portail & Clôture'),
+    CommonFacilityModel(id: 8, label: 'Local Poubelles'),
+    CommonFacilityModel(id: 9, label: 'Éclairage extérieur'),
+  ];
+
   Future<void> _loadFacilities(int residenceId) async {
     setState(() { _loadingFacilities = true; _selectedFacility = null; _facilities = []; });
     try {
       final data = await CoOwnerService.getCommonFacilities(residenceId);
       if (!mounted) return;
-      setState(() { _facilities = data; _loadingFacilities = false; });
+      setState(() {
+        _facilities = data.isNotEmpty ? data : _fallbackFacilities;
+        _loadingFacilities = false;
+      });
     } catch (_) {
-      if (mounted) setState(() => _loadingFacilities = false);
+      if (mounted) {
+        setState(() {
+          _facilities = _fallbackFacilities;
+          _loadingFacilities = false;
+        });
+      }
     }
   }
 

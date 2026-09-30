@@ -15,6 +15,7 @@ import '../reunions/reunions.dart';
 import 'informations_personnelles.dart';
 import '../documents/mes_documents.dart';
 import '../profil/mes_signalements.dart';
+import 'changer_mot_de_passe.dart';
 // import 'mon_abonnement.dart'; // ABONNEMENT - commenté temporairement
 
 class ProfilPage extends StatefulWidget {
@@ -83,52 +84,79 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Widget _navItem(BuildContext ctx, String iconPath, String label,
       {VoidCallback? onTap, bool active = false}) {
-    if (active) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SvgPicture.asset(iconPath, width: 20, height: 20),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF6F675E),
+    final childWidget = active
+        ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgPicture.asset(iconPath, width: 18, height: 18),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF6F675E),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SvgPicture.asset(iconPath, width: 22, height: 22),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.85),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          );
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          color: Colors.transparent,
+          height: double.infinity,
+          alignment: Alignment.center,
+          child: childWidget,
         ),
-      );
-    }
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SvgPicture.asset(iconPath, width: 22, height: 22),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w500,
-              fontSize: 10,
-              color: Colors.white.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
       ),
     );
   }
 
   Widget _defaultAvatar() {
+    final first = _profile?.firstName.isNotEmpty == true ? _profile!.firstName[0] : '';
+    final last = _profile?.lastName.isNotEmpty == true ? _profile!.lastName[0] : '';
+    final initials = (first + last).toUpperCase();
+    if (initials.isNotEmpty) {
+      return Center(
+        child: Text(
+          initials,
+          style: GoogleFonts.inter(fontSize: 30, fontWeight: FontWeight.w700, color: const Color(0xFF6F675E)),
+        ),
+      );
+    }
     return Center(
       child: SvgPicture.asset(
         'assets/icons/person.svg',
@@ -141,7 +169,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
   Widget _menuCard({required Widget child}) {
     return Container(
-      width: 365,
+      width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -164,7 +192,7 @@ class _ProfilPageState extends State<ProfilPage> {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 365,
+        width: double.infinity,
         height: 72,
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 16),
         decoration: const BoxDecoration(),
@@ -226,8 +254,8 @@ class _ProfilPageState extends State<ProfilPage> {
       backgroundColor: const Color(0xFFFAF9F4),
       bottomNavigationBar: Builder(
         builder: (ctx) => Container(
-          height: 75,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          height: 82 + MediaQuery.of(context).padding.bottom,
+          padding: EdgeInsets.only(left: 8, right: 8, top: 10, bottom: MediaQuery.of(context).padding.bottom + 10),
           decoration: const BoxDecoration(
             color: Color(0xFF6F675E),
             borderRadius: BorderRadius.only(
@@ -239,8 +267,6 @@ class _ProfilPageState extends State<ProfilPage> {
             ],
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _navItem(ctx, 'assets/icons/accueil.svg', 'Accueil',
                 onTap: () => Navigator.of(ctx).pushReplacement(PageRouteBuilder(
@@ -390,6 +416,19 @@ class _ProfilPageState extends State<ProfilPage> {
               trailing: const Icon(Icons.chevron_right, color: Color(0xFF2F3542), size: 20),
               onTap: () => Navigator.of(context).push(PageRouteBuilder(
                 pageBuilder: (c, a, s) => const MesSignalementsPage(),
+                transitionsBuilder: (c, anim, s, child) => FadeTransition(
+                  opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut), child: child),
+                transitionDuration: const Duration(milliseconds: 300),
+              )),
+            )),
+            const SizedBox(height: 9),
+            _menuCard(child: _menuItem(
+              iconPath: 'assets/icons/securite.svg',
+              title: 'Changer mon mot de passe',
+              iconBgColor: const Color(0x1A6F675E),
+              trailing: const Icon(Icons.chevron_right, color: Color(0xFF2F3542), size: 20),
+              onTap: () => Navigator.of(context).push(PageRouteBuilder(
+                pageBuilder: (c, a, s) => const ChangerMotDePassePage(),
                 transitionsBuilder: (c, anim, s, child) => FadeTransition(
                   opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut), child: child),
                 transitionDuration: const Duration(milliseconds: 300),

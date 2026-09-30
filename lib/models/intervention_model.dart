@@ -30,11 +30,13 @@ class InterventionProvider {
 }
 
 class InterventionTimelineStep {
+  final String? type;
   final String label;
   final String? date;
   final bool completed;
 
   const InterventionTimelineStep({
+    this.type,
     required this.label,
     this.date,
     required this.completed,
@@ -42,6 +44,7 @@ class InterventionTimelineStep {
 
   factory InterventionTimelineStep.fromJson(Map<String, dynamic> json) =>
       InterventionTimelineStep(
+        type: json['type']?.toString(),
         label: json['label']?.toString() ?? '',
         date: json['date']?.toString(),
         completed: json['completed'] as bool? ?? false,
@@ -104,7 +107,7 @@ class InterventionDetailModel {
         title: json['title']?.toString() ?? '',
         description: json['description']?.toString(),
         residenceName: json['residenceName']?.toString(),
-        typeBien: json['typeBien']?.toString(),
+        typeBien: json['typeBien']?.toString() ?? json['propertyReference']?.toString(),
         commonFacilityName: json['commonFacilityName']?.toString(),
         status: json['status']?.toString() ?? 'PENDING',
         statusLabel: json['statusLabel']?.toString(),
@@ -115,6 +118,7 @@ class InterventionDetailModel {
         photoUrls: (json['photoUrls'] as List? ?? [])
             .map((e) => e?.toString() ?? '')
             .where((e) => e.isNotEmpty)
+            .map((e) => e.startsWith('http') ? e : 'https://api.solimus.sn/api/files/$e')
             .toList(),
         selectedProvider: json['selectedProvider'] != null
             ? InterventionProvider.fromJson(
@@ -251,6 +255,8 @@ class InterventionModel {
   final String? urgencyLevel;
   final String? urgencyLabel;
   final String? createdAt;
+  final bool fromTenant;
+  final String? tenantName;
 
   const InterventionModel({
     required this.id,
@@ -265,6 +271,8 @@ class InterventionModel {
     this.urgencyLevel,
     this.urgencyLabel,
     this.createdAt,
+    this.fromTenant = false,
+    this.tenantName,
   });
 
   String get location {
@@ -274,21 +282,95 @@ class InterventionModel {
     return parts.isNotEmpty ? parts : '—';
   }
 
-  factory InterventionModel.fromJson(Map<String, dynamic> json) =>
-      InterventionModel(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        title: json['title']?.toString() ?? '',
-        residenceName: json['residenceName']?.toString(),
-        propertyReference: json['propertyReference']?.toString(),
-        commonFacilityName: json['commonFacilityName']?.toString(),
-        specialtyName: json['specialtyName']?.toString(),
-        specialtyIcon: json['specialtyIcon']?.toString(),
-        status: json['status']?.toString() ?? 'PENDING',
-        statusLabel: json['statusLabel']?.toString(),
-        urgencyLevel: json['urgencyLevel']?.toString(),
-        urgencyLabel: json['urgencyLabel']?.toString(),
-        createdAt: json['createdAt']?.toString(),
-      );
+  factory InterventionModel.fromJson(Map<String, dynamic> json) {
+    final iconRaw = json['specialtyIcon']?.toString();
+    final formattedIcon = (iconRaw != null && iconRaw.isNotEmpty)
+        ? (iconRaw.startsWith('http')
+            ? iconRaw
+            : 'https://api.solimus.sn/api/files/$iconRaw')
+        : null;
+
+    final tName = json['tenantName']?.toString() ??
+        json['declaredByName']?.toString() ??
+        json['authorName']?.toString() ??
+        json['createdByName']?.toString();
+    final isFromTenant = json['fromTenant'] as bool? ??
+        (json['isTenant'] as bool? ?? (tName != null && tName.isNotEmpty));
+
+    return InterventionModel(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      title: json['title']?.toString() ?? '',
+      residenceName: json['residenceName']?.toString(),
+      propertyReference: json['propertyReference']?.toString(),
+      commonFacilityName: json['commonFacilityName']?.toString(),
+      specialtyName: json['specialtyName']?.toString(),
+      specialtyIcon: formattedIcon,
+      status: json['status']?.toString() ?? 'PENDING',
+      statusLabel: json['statusLabel']?.toString(),
+      urgencyLevel: json['urgencyLevel']?.toString(),
+      urgencyLabel: json['urgencyLabel']?.toString(),
+      createdAt: _extractDateString(json),
+      fromTenant: isFromTenant,
+      tenantName: tName,
+    );
+  }
+
+  static String? _extractDateString(Map<String, dynamic> json) {
+    final keys = [
+      'createdAt',
+      'createdDate',
+      'creationDate',
+      'date',
+      'created_at',
+      'dateEmission',
+      'declaredAt',
+      'startedAt',
+      'updatedAt',
+      'datePrevue'
+    ];
+    for (final k in keys) {
+      final val = json[k];
+      if (val == null) continue;
+      if (val is List && val.isNotEmpty) {
+        try {
+          final y = (val[0] as num).toInt();
+          final m = val.length > 1 ? (val[1] as num).toInt() : 1;
+          final d = val.length > 2 ? (val[2] as num).toInt() : 1;
+          final h = val.length > 3 ? (val[3] as num).toInt() : 0;
+          final min = val.length > 4 ? (val[4] as num).toInt() : 0;
+          final s = val.length > 5 ? (val[5] as num).toInt() : 0;
+          return DateTime(y, m, d, h, min, s).toIso8601String();
+        } catch (_) {}
+      }
+      if (val is num) {
+        if (val > 100000000000) {
+          return DateTime.fromMillisecondsSinceEpoch(val.toInt()).toIso8601String();
+        } else {
+          return DateTime.fromMillisecondsSinceEpoch(val.toInt() * 1000).toIso8601String();
+        }
+      }
+      final s = val.toString().trim();
+      if (s.isEmpty || s == 'null') continue;
+
+      // Check if "dd/MM/yyyy HH:mm" or "dd/MM/yyyy"
+      final regex = RegExp(r'^(\d{2})/(\d{2})/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?');
+      final match = regex.firstMatch(s);
+      if (match != null) {
+        try {
+          final day = int.parse(match.group(1)!);
+          final month = int.parse(match.group(2)!);
+          final year = int.parse(match.group(3)!);
+          final hour = match.group(4) != null ? int.parse(match.group(4)!) : 0;
+          final minute = match.group(5) != null ? int.parse(match.group(5)!) : 0;
+          final second = match.group(6) != null ? int.parse(match.group(6)!) : 0;
+          return DateTime(year, month, day, hour, minute, second).toIso8601String();
+        } catch (_) {}
+      }
+
+      return s;
+    }
+    return null;
+  }
 }
 
 class InterventionsResponse {
@@ -306,15 +388,24 @@ class InterventionsResponse {
     required this.totalElements,
   });
 
+  List<InterventionModel> get content => interventions;
+
   factory InterventionsResponse.fromJson(Map<String, dynamic> json) {
-    final page = json['interventions'] as Map<String, dynamic>? ?? {};
-    final content = page['content'] as List? ?? [];
+    final page = json['interventions'] as Map<String, dynamic>?;
+    final List contentList;
+    if (page != null && page['content'] is List) {
+      contentList = page['content'] as List;
+    } else if (json['content'] is List) {
+      contentList = json['content'] as List;
+    } else {
+      contentList = [];
+    }
     return InterventionsResponse(
       totalIncidents: (json['totalIncidents'] as num?)?.toInt() ?? 0,
       enCoursCount: (json['enCoursCount'] as num?)?.toInt() ?? 0,
-      totalPages: (page['totalPages'] as num?)?.toInt() ?? 0,
-      totalElements: (page['totalElements'] as num?)?.toInt() ?? 0,
-      interventions: content
+      totalPages: (json['totalPages'] as num?)?.toInt() ?? (page?['totalPages'] as num?)?.toInt() ?? 0,
+      totalElements: (json['totalElements'] as num?)?.toInt() ?? (page?['totalElements'] as num?)?.toInt() ?? 0,
+      interventions: contentList
           .map((e) => InterventionModel.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
@@ -399,13 +490,20 @@ class SpecialtyModel {
 class CommonFacilityModel {
   final int id;
   final String label;
+  final String? icon;
 
-  const CommonFacilityModel({required this.id, required this.label});
+  const CommonFacilityModel({required this.id, required this.label, this.icon});
 
-  factory CommonFacilityModel.fromJson(Map<String, dynamic> json) => CommonFacilityModel(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        label: json['label']?.toString() ?? '',
-      );
+  String get name => label;
+
+  factory CommonFacilityModel.fromJson(Map<String, dynamic> json) {
+    final rawLabel = (json['name'] ?? json['label'] ?? json['facilityName'] ?? '').toString();
+    return CommonFacilityModel(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      label: rawLabel,
+      icon: json['icon']?.toString(),
+    );
+  }
 }
 
 class SignalementModel {
@@ -415,6 +513,9 @@ class SignalementModel {
   final String? createdAt;
   final String? urgencyLevel;
   final String status;
+  final bool fromTenant;
+  final String? tenantName;
+  final String? declaredByName;
 
   const SignalementModel({
     required this.id,
@@ -423,16 +524,31 @@ class SignalementModel {
     this.createdAt,
     this.urgencyLevel,
     required this.status,
+    this.fromTenant = false,
+    this.tenantName,
+    this.declaredByName,
   });
 
-  factory SignalementModel.fromJson(Map<String, dynamic> json) => SignalementModel(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        title: json['title']?.toString() ?? '',
-        positionLabel: json['positionLabel']?.toString(),
-        createdAt: json['createdAt']?.toString(),
-        urgencyLevel: json['urgencyLevel']?.toString(),
-        status: json['status']?.toString() ?? 'PENDING',
-      );
+  factory SignalementModel.fromJson(Map<String, dynamic> json) {
+    final tName = json['tenantName']?.toString() ??
+        json['declaredByName']?.toString() ??
+        json['authorName']?.toString() ??
+        json['createdByName']?.toString();
+    final isFromTenant = json['fromTenant'] as bool? ??
+        (json['isTenant'] as bool? ?? (tName != null && tName.isNotEmpty));
+
+    return SignalementModel(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      title: json['title']?.toString() ?? '',
+      positionLabel: json['positionLabel']?.toString(),
+      createdAt: json['createdAt']?.toString(),
+      urgencyLevel: json['urgencyLevel']?.toString(),
+      status: json['status']?.toString() ?? 'PENDING',
+      fromTenant: isFromTenant,
+      tenantName: tName,
+      declaredByName: json['declaredByName']?.toString(),
+    );
+  }
 }
 
 class SignalementHistoryEntry {
@@ -471,6 +587,8 @@ class SignalementDetailModel {
   final String? declaredByName;
   final String? closingNote;
   final List<SignalementHistoryEntry> history;
+  final bool fromTenant;
+  final String? tenantName;
 
   const SignalementDetailModel({
     required this.id,
@@ -486,6 +604,8 @@ class SignalementDetailModel {
     this.declaredByName,
     this.closingNote,
     required this.history,
+    required this.fromTenant,
+    this.tenantName,
   });
 
   factory SignalementDetailModel.fromJson(Map<String, dynamic> json) =>
@@ -502,11 +622,14 @@ class SignalementDetailModel {
         photoUrls: (json['photoUrls'] as List? ?? [])
             .map((e) => e?.toString() ?? '')
             .where((e) => e.isNotEmpty)
+            .map((e) => e.startsWith('http') ? e : 'https://api.solimus.sn/api/files/$e')
             .toList(),
         declaredByName: json['declaredByName']?.toString(),
         closingNote: json['closingNote']?.toString(),
         history: (json['history'] as List? ?? [])
             .map((e) => SignalementHistoryEntry.fromJson(e as Map<String, dynamic>))
             .toList(),
+        fromTenant: json['fromTenant'] as bool? ?? false,
+        tenantName: json['tenantName']?.toString(),
       );
 }

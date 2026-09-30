@@ -75,7 +75,11 @@ class MeetingDetailModel {
 
   static String? _timeFromMap(dynamic t) {
     if (t == null) return null;
-    if (t is String) return t;
+    if (t is String) {
+      final parts = t.split(':');
+      if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+      return t;
+    }
     if (t is Map) {
       final h = (t['hour'] as num?)?.toInt() ?? 0;
       final m = (t['minute'] as num?)?.toInt() ?? 0;
@@ -147,7 +151,11 @@ class MeetingModel {
 
   static String? _timeFromMap(dynamic t) {
     if (t == null) return null;
-    if (t is String) return t;
+    if (t is String) {
+      final parts = t.split(':');
+      if (parts.length >= 2) return '${parts[0]}:${parts[1]}';
+      return t;
+    }
     if (t is Map) {
       final h = (t['hour'] as num?)?.toInt() ?? 0;
       final m = (t['minute'] as num?)?.toInt() ?? 0;
@@ -183,4 +191,3 @@ class MeetingModel {
     return null;
   }
 }
-

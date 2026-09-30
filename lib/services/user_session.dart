@@ -42,4 +42,30 @@ class UserSession {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefKey);
   }
+
+  // ── Présence aux réunions ────────────────────────────────────────────────
+
+  // Mémoire locale (synchrone) : meetingId → 'CONFIRMED' | 'PROXY:Nom Prenom'
+  final Map<int, String> _meetingAttendance = {};
+
+  /// Retourne la valeur stockée pour une réunion (null si non renseignée).
+  String? getMeetingAttendance(int meetingId) => _meetingAttendance[meetingId];
+
+  /// Enregistre la réponse de présence en mémoire et dans SharedPreferences.
+  void setMeetingAttendance(int meetingId, String value) {
+    _meetingAttendance[meetingId] = value;
+    // Persistance asynchrone (fire-and-forget)
+    SharedPreferences.getInstance().then(
+      (prefs) => prefs.setString('meeting_attendance_$meetingId', value),
+    );
+  }
+
+  /// Charge depuis SharedPreferences les réponses sauvegardées (à appeler au démarrage).
+  Future<void> loadMeetingAttendances(List<int> meetingIds) async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final id in meetingIds) {
+      final saved = prefs.getString('meeting_attendance_$id');
+      if (saved != null) _meetingAttendance[id] = saved;
+    }
+  }
 }

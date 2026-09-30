@@ -247,9 +247,13 @@ class _SignalementDetailPageState extends State<SignalementDetailPage> {
                     _section(
                       title: 'INFORMATIONS GÉNÉRALES',
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        if (d?.reference != null && d!.reference!.isNotEmpty)
+                          _infoRow(Icons.tag_outlined, 'RÉFÉRENCE', d.reference!),
                         _infoRow(Icons.location_on_outlined, 'RÉSIDENCE', d?.residenceName ?? '—'),
                         _infoRow(Icons.push_pin_outlined, 'POSITION', d?.positionLabel ?? '—'),
                         _infoRow(Icons.calendar_today_outlined, 'DATE DU SIGNALEMENT', _formatDate(d?.createdAt)),
+                        if (d?.declaredByName != null || d?.tenantName != null)
+                          _infoRow(Icons.person_outline, 'DÉCLARÉ PAR', d!.fromTenant ? '${d.tenantName ?? "Locataire"} (Locataire)' : '${d.declaredByName ?? "Copropriétaire"} (Copropriétaire)'),
                         if (d?.urgencyLevel != null && d!.urgencyLevel!.isNotEmpty)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -269,8 +273,8 @@ class _SignalementDetailPageState extends State<SignalementDetailPage> {
                       title: 'DESCRIPTION',
                       child: Text(
                         d?.description != null && d!.description!.isNotEmpty
-                            ? '"${d.description}"'
-                            : 'Aucune description',
+                            ? d.description!
+                            : 'Aucune description fournie.',
                         style: GoogleFonts.inter(fontSize: 14, height: 1.6, color: const Color(0xFF374151)),
                       ),
                     ),

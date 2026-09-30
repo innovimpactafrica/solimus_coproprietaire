@@ -167,7 +167,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 ),
                 const SizedBox(height: 48),
                 SizedBox(
-                  width: 398,
+                  width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _onEnvoyerCode,

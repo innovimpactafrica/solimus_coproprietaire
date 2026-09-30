@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Solimus Copropriétaire</string>
+	<string>Solimus Syndic</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -66,9 +66,20 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Cette application utilise la caméra pour prendre des photos des travaux.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Cette application accède à la galerie pour sélectionner des photos.</string>
+	<key>NSRemoteNotificationUsageDescription</key>
+	<string>Cette application utilise les notifications pour vous informer des mises à jour importantes.</string>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
 </dict>
 </plist>

@@ -26,7 +26,8 @@ class _IncidentDetailPageState extends State<IncidentDetailPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    // Onglet Devis désactivé pour le moment
+    _tabController = TabController(length: 1, vsync: this);
     _loadAll();
   }
 
@@ -388,6 +389,7 @@ class _IncidentDetailPageState extends State<IncidentDetailPage>
             ),
           ),
           const SizedBox(height: 24),
+          /*
           // Clôturer button
           SizedBox(
             width: double.infinity,
@@ -421,6 +423,7 @@ class _IncidentDetailPageState extends State<IncidentDetailPage>
               ),
             ),
           ),
+          */
           const SizedBox(height: 32),
         ],
       ),
@@ -704,6 +707,7 @@ class _IncidentDetailPageState extends State<IncidentDetailPage>
     );
   }
 
+  // ignore: unused_element
   Widget _buildDevisTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -878,7 +882,8 @@ class _IncidentDetailPageState extends State<IncidentDetailPage>
               ],
             ),
           ),
-          // Tab bar — séparé, fond blanc
+          // Tab bar — séparé, fond blanc (commenté pour le moment)
+          /*
           Container(
             height: 66.5,
             decoration: const BoxDecoration(
@@ -916,32 +921,28 @@ class _IncidentDetailPageState extends State<IncidentDetailPage>
                   ),
                   text: 'Détails',
                 ),
-                Tab(
-                  icon: SvgPicture.asset(
-                    'assets/icons/devis.svg',
-                    width: 18,
-                    height: 18,
-                    colorFilter: ColorFilter.mode(
-                      _tabController.index == 1
-                          ? const Color(0xFF6F675E)
-                          : const Color(0xFF9CA3AF),
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                  text: 'Devis',
-                ),
+                // Onglet Devis commenté pour le moment :
+                // Tab(
+                //   icon: SvgPicture.asset(
+                //     'assets/icons/devis.svg',
+                //     width: 18,
+                //     height: 18,
+                //     colorFilter: ColorFilter.mode(
+                //       _tabController.index == 1
+                //           ? const Color(0xFF6F675E)
+                //           : const Color(0xFF9CA3AF),
+                //       BlendMode.srcIn,
+                //     ),
+                //   ),
+                //   text: 'Devis',
+                // ),
               ],
             ),
           ),
-          // Tab content
+          */
+          // Vue principale (Détails)
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildDetailsTab(),
-                _buildDevisTab(),
-              ],
-            ),
+            child: _buildDetailsTab(),
           ),
         ],
       ),

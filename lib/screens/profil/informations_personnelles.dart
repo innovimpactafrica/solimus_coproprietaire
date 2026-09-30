@@ -48,6 +48,21 @@ class _InformationsPersonnellesPageState
     super.dispose();
   }
 
+  Widget _buildInitialsAvatar() {
+    final first = widget.profile?.firstName.isNotEmpty == true ? widget.profile!.firstName[0] : '';
+    final last = widget.profile?.lastName.isNotEmpty == true ? widget.profile!.lastName[0] : '';
+    final initials = (first + last).toUpperCase();
+    return Container(
+      width: 90, height: 90,
+      color: const Color(0xFFEDE9E3),
+      child: Center(
+        child: initials.isNotEmpty
+            ? Text(initials, style: GoogleFonts.inter(fontSize: 32, fontWeight: FontWeight.w700, color: const Color(0xFF6F675E)))
+            : const Icon(Icons.person, size: 44, color: Color(0xFF6F675E)),
+      ),
+    );
+  }
+
   Future<void> _pickPhoto() async {
     showModalBottomSheet(
       context: context,
@@ -280,7 +295,7 @@ class _InformationsPersonnellesPageState
                                   File(UserSession.instance.localPhotoPath.value!),
                                   width: 90, height: 90, fit: BoxFit.cover,
                                 )
-                              : Image.asset('assets/images/cop.png', width: 90, height: 90, fit: BoxFit.cover),
+                              : _buildInitialsAvatar(),
                     ),
                   ),
                   Positioned(

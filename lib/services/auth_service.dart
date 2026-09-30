@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';
+import 'auth_storage.dart';
 import '../models/login_response.dart';
 
 String _extractApiError(http.Response response, String fallback) {
@@ -86,6 +88,18 @@ class AuthService {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(_extractApiError(response, 'Échec de la création du mot de passe'));
     }
+
+    // Créer une notification de bienvenue pour le nouveau profil
+    // On ne bloque pas si l'endpoint n'existe pas encore
+    try {
+      await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/auth/welcome-notification'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      ).timeout(const Duration(seconds: 5));
+    } catch (_) {
+      // Silencieux - l'endpoint peut ne pas être implémenté côté backend
+    }
   }
 
   static Future<void> logout({required String token}) async {
@@ -170,5 +184,25 @@ class AuthService {
 
     return LoginResponse.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Enregistre le token FCM pour les notifications push (PUT /api/notifications/fcm-token?fcmToken=...)
+  /// Utilisable par tous les profils (Copropriétaire, Locataire, etc.)
+  static Future<void> updateFcmToken(String fcmToken) async {
+    final token = await AuthStorage.getToken();
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/notifications/fcm-token')
+        .replace(queryParameters: {'fcmToken': fcmToken});
+    final response = await http.put(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Impossible d\'enregistrer le token FCM (${response.statusCode}): ${response.body}');
+    }
   }
 }

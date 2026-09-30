@@ -20,7 +20,7 @@ class DocumentViewerPage extends StatefulWidget {
 
 class _DocumentViewerPageState extends State<DocumentViewerPage> {
   WebViewController? _controller;
-  bool _isLoading = true;
+  bool _isLoading = true; 
 
   @override
   void initState() {

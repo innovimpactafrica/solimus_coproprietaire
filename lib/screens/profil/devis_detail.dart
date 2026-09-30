@@ -191,7 +191,7 @@ class DevisDetailPage extends StatelessWidget {
 
             // Carte statut
             Container(
-              width: 365,
+              width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
@@ -336,7 +336,7 @@ class DevisDetailPage extends StatelessWidget {
 
             // Informations client
             Container(
-              width: 365,
+              width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -362,7 +362,7 @@ class DevisDetailPage extends StatelessWidget {
 
             // Matériels
             Container(
-              width: 365,
+              width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -412,7 +412,7 @@ class DevisDetailPage extends StatelessWidget {
 
             // Main d'œuvre
             Container(
-              width: 365,
+              width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -460,7 +460,7 @@ class DevisDetailPage extends StatelessWidget {
 
             // Total TTC
             Container(
-              width: 365,
+              width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               decoration: BoxDecoration(
                 color: const Color(0xFF231F20),
@@ -494,7 +494,7 @@ class DevisDetailPage extends StatelessWidget {
 
             // Notes
             Container(
-              width: 365,
+              width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
                 color: Color(0xFFFFFBEB),
@@ -540,7 +540,7 @@ class DevisDetailPage extends StatelessWidget {
 
             // Bouton télécharger
             Container(
-              width: 365,
+              width: double.infinity,
               height: 56,
               decoration: BoxDecoration(
                 color: const Color(0xFF6F675E),

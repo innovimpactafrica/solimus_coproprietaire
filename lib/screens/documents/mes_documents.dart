@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -178,37 +179,26 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
   }
 
   Future<void> _downloadDocument(DocumentModel doc) async {
-    print('[DOWNLOAD] fileName: ${doc.fileName}');
-    print('[DOWNLOAD] sourceType: ${doc.sourceType}');
-    print('[DOWNLOAD] sourceId: ${doc.sourceId}');
-    print('[DOWNLOAD] category: ${doc.category}');
 
     final rawUrl = doc.fileUrl;
-    print('[DOWNLOAD] fileUrl: $rawUrl');
 
     if (rawUrl == null || rawUrl.isEmpty) {
-      print('[DOWNLOAD] ERREUR: fileUrl est null ou vide');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('URL du document manquante')),
       );
       return;
     }
 
-    final downloadUrl = rawUrl.startsWith('http') ? rawUrl : 'https://api.solimus.innovimpactdev.cloud/uploads/$rawUrl';
-    print('[DOWNLOAD] URL complète: $downloadUrl');
+    final downloadUrl = rawUrl.startsWith('http') ? rawUrl : 'https://api.solimus.sn/uploads/$rawUrl';
 
     setState(() => _downloading.add(doc.fileName));
 
     try {
-      print('[DOWNLOAD] Téléchargement HTTP...');
       final token = await _getToken();
       final response = await http.get(
         Uri.parse(downloadUrl),
         headers: {if (token != null) 'Authorization': 'Bearer $token'},
       );
-      print('[DOWNLOAD] HTTP status: ${response.statusCode}');
-      print('[DOWNLOAD] Content-Type: ${response.headers['content-type']}');
-      print('[DOWNLOAD] Taille réponse: ${response.bodyBytes.length} bytes');
 
       if (response.statusCode != 200) {
         throw Exception('Erreur HTTP ${response.statusCode}');
@@ -216,24 +206,19 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
 
       final safeName = doc.fileName.replaceAll(RegExp(r'[^\w\-.]'), '_');
       final filePath = '${Directory.systemTemp.path}/$safeName';
-      print('[DOWNLOAD] Écriture fichier: $filePath');
       final file = File(filePath);
       await file.writeAsBytes(response.bodyBytes);
 
       if (!mounted) return;
       setState(() => _downloading.remove(doc.fileName));
 
-      print('[DOWNLOAD] Ouverture fichier...');
       final result = await OpenFilex.open(file.path);
-      print('[DOWNLOAD] OpenFilex result: ${result.type} - ${result.message}');
       if (result.type != ResultType.done && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Impossible d\'ouvrir le fichier : ${result.message}')),
         );
       }
     } catch (e, stack) {
-      print('[DOWNLOAD] EXCEPTION: $e');
-      print('[DOWNLOAD] STACK: $stack');
       if (!mounted) return;
       setState(() => _downloading.remove(doc.fileName));
       ScaffoldMessenger.of(context).showSnackBar(
@@ -404,9 +389,7 @@ class _MesDocumentsPageState extends State<MesDocumentsPage> {
       return;
     }
     final rawUrl = doc.fileUrl!;
-    print('[VIEWER] fileUrl brut: $rawUrl');
-    final fullUrl = rawUrl.startsWith('http') ? rawUrl : 'https://api.solimus.innovimpactdev.cloud/uploads/$rawUrl';
-    print('[VIEWER] URL finale: $fullUrl');
+    final fullUrl = rawUrl.startsWith('http') ? rawUrl : 'https://api.solimus.sn/uploads/$rawUrl';
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => DocumentViewerPage(
         fileName: doc.fileName,

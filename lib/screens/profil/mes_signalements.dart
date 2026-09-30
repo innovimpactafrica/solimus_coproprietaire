@@ -19,6 +19,15 @@ class _MesSignalementsPageState extends State<MesSignalementsPage> {
   bool _isLoading = true;
   String? _error;
   final TextEditingController _search = TextEditingController();
+  String? _selectedStatus;  // null = tous
+
+  static const _statusOptions = [
+    (label: 'Tous', value: null),
+    (label: 'En attente', value: 'PENDING'),
+    (label: 'En cours', value: 'IN_PROGRESS'),
+    (label: 'Résolu', value: 'RESOLVED'),
+    (label: 'Converti en travaux', value: 'CONVERTED_TO_WORK'),
+  ];
 
   @override
   void initState() {
@@ -37,6 +46,7 @@ class _MesSignalementsPageState extends State<MesSignalementsPage> {
     try {
       final data = await CoOwnerService.getSignalements(
         search: _search.text.trim().isEmpty ? null : _search.text.trim(),
+        status: _selectedStatus,
       );
       if (!mounted) return;
       setState(() {
@@ -104,6 +114,37 @@ class _MesSignalementsPageState extends State<MesSignalementsPage> {
     }
   }
 
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Filtrer par statut', style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700, color: const Color(0xFF2D2520))),
+            const SizedBox(height: 16),
+            ..._statusOptions.map((opt) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(opt.label, style: GoogleFonts.inter(fontSize: 15, color: const Color(0xFF2D2520))),
+              trailing: _selectedStatus == opt.value
+                  ? const Icon(Icons.check_circle, color: Color(0xFF6F675E))
+                  : const Icon(Icons.radio_button_unchecked, color: Color(0xFFD1D5DB)),
+              onTap: () {
+                setState(() => _selectedStatus = opt.value);
+                Navigator.of(context).pop();
+                _load();
+              },
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCard(SignalementModel item) {
     final statusLabel = _statusLabel(item);
     final statusTxtColor = _statusTextColor(item.status);
@@ -146,6 +187,28 @@ class _MesSignalementsPageState extends State<MesSignalementsPage> {
                   item.title,
                   style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700, color: const Color(0xFF1C1C1E)),
                 ),
+                if (item.fromTenant || (item.tenantName != null && item.tenantName!.isNotEmpty) || (item.declaredByName != null && item.declaredByName!.isNotEmpty)) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.person_outline_rounded, size: 14, color: Color(0xFF1D4ED8)),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Émis par ${item.tenantName ?? item.declaredByName ?? "le locataire"}',
+                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF1D4ED8)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 // Location
                 Row(children: [
@@ -288,10 +351,29 @@ class _MesSignalementsPageState extends State<MesSignalementsPage> {
                       ),
                       Container(width: 1, height: 24, color: const Color(0xFFE5E7EB)),
                       const SizedBox(width: 14),
-                      SvgPicture.asset(
-                        'assets/icons/Filter.svg',
-                        width: 22, height: 22,
-                        colorFilter: const ColorFilter.mode(Color(0xFF6F675E), BlendMode.srcIn),
+                      GestureDetector(
+                        onTap: _showFilterSheet,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            SvgPicture.asset(
+                              'assets/icons/Filter.svg',
+                              width: 22, height: 22,
+                              colorFilter: ColorFilter.mode(
+                                _selectedStatus != null ? const Color(0xFFF9C20A) : const Color(0xFF6F675E),
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                            if (_selectedStatus != null)
+                              Positioned(
+                                top: -3, right: -3,
+                                child: Container(
+                                  width: 8, height: 8,
+                                  decoration: const BoxDecoration(color: Color(0xFFF9C20A), shape: BoxShape.circle),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 16),
                     ]),

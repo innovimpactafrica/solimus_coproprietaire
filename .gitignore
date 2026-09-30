@@ -23,6 +23,16 @@ android/.gradle/
 android/local.properties
 android/app/google-services.json
 
+# Android Secrets & Keystores
+android/key.properties
+*.jks
+*.keystore
+DEPLOY_SECRETS.md
+
 # Env
 .env
 *.env
+
+# macOS
+.DS_Store
+*.DS_Store

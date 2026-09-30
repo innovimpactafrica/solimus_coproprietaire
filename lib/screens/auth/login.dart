@@ -3,9 +3,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/auth_service.dart';
 import '../../services/auth_storage.dart';
+import '../../services/locataire_service.dart';
+import '../../services/push_notification_service.dart';
 import 'forgot_password.dart';
-import 'inscription.dart';
+// import 'inscription.dart';
 import '../home/home.dart';
+import '../locataire/locataire_home.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -83,6 +86,25 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    // ─── Authentification Locataire (temporaire – à remplacer par l'API) ──────
+    if (identifier == 'loc1@yopmail.com' && password == 'passer123') {
+      setState(() => _isLoading = true);
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const LocataireHomePage(),
+          transitionsBuilder: (_, anim, __, child) => FadeTransition(
+            opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+            child: child,
+          ),
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
+      );
+      return;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     setState(() => _isLoading = true);
     try {
       final result = await AuthService.login(
@@ -96,13 +118,39 @@ class _LoginPageState extends State<LoginPage> {
         firstName: result.firstName,
         lastName: result.lastName,
         email: result.email,
+        role: result.role,
       );
+
+      // Enregistrement du token FCM auprès du serveur pour cet utilisateur (Propriétaire / Locataire)
+      PushNotificationService.instance.registerToken();
 
       if (!mounted) return;
 
+      // Détection automatique du rôle (Locataire vs Copropriétaire)
+      bool isLocataire = false;
+      final roleUpper = result.role.toUpperCase();
+
+      if (roleUpper.contains('LOCATAIRE') || roleUpper.contains('TENANT')) {
+        isLocataire = true;
+      } else {
+        // Si le rôle n'est pas explicite, vérifier via l'API locataire
+        try {
+          await LocataireService.getDashboard();
+          isLocataire = true;
+        } catch (_) {
+          isLocataire = false;
+        }
+      }
+
+
+      if (!mounted) return;
+
+      final Widget destinationPage =
+          isLocataire ? const LocataireHomePage() : const HomePage();
+
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const HomePage(),
+          pageBuilder: (_, __, ___) => destinationPage,
           transitionsBuilder: (_, anim, __, child) => FadeTransition(
             opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
             child: child,
@@ -128,33 +176,12 @@ class _LoginPageState extends State<LoginPage> {
         children: [
           Positioned(
             top: 62,
-            left: 275,
+            right: 16,
             width: 95,
             height: 36,
             child: SvgPicture.asset(
               'assets/images/solimus logo2.svg',
               fit: BoxFit.contain,
-            ),
-          ),
-          Positioned(
-            top: 62,
-            left: 16,
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF6F675E),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: CustomPaint(
-                    size: const Size(6.67, 13.33),
-                    painter: _ChevronPainter(),
-                  ),
-                ),
-              ),
             ),
           ),
           Positioned(
@@ -203,10 +230,16 @@ class _LoginPageState extends State<LoginPage> {
                             () => _passwordVisible = !_passwordVisible),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
-                          child: SvgPicture.asset(
-                            'assets/icons/oeil masquer.svg',
-                            fit: BoxFit.contain,
-                          ),
+                          child: _passwordVisible
+                              ? const Icon(
+                                  Icons.visibility_rounded,
+                                  color: Color(0xFF6F675E),
+                                  size: 22,
+                                )
+                              : SvgPicture.asset(
+                                  'assets/icons/oeil masquer.svg',
+                                  fit: BoxFit.contain,
+                                ),
                         ),
                       ),
                     ),
@@ -246,7 +279,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 48),
                 SizedBox(
-                  width: 398,
+                  width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _onSeConnecter,
@@ -286,67 +319,45 @@ class _LoginPageState extends State<LoginPage> {
               ],
             ),
           ),
-          Positioned(
-            bottom: 55,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Vous n\'avez pas de compte ?',
-                  style: GoogleFonts.beVietnamPro(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                    height: 1.0,
-                    letterSpacing: 0,
-                    color: const Color(0x99231F20),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                GestureDetector(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const InscriptionPage()),
-                  ),
-                  child: Text(
-                    'S\'inscrire',
-                    style: GoogleFonts.beVietnamPro(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                      height: 1.0,
-                      letterSpacing: 0,
-                      color: const Color(0xFFF9C20A),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Positioned(
+          //   bottom: 55,
+          //   left: 0,
+          //   right: 0,
+          //   child: Row(
+          //     mainAxisAlignment: MainAxisAlignment.center,
+          //     children: [
+          //       Text(
+          //         'Vous n\'avez pas de compte ?',
+          //         style: GoogleFonts.beVietnamPro(
+          //           fontWeight: FontWeight.w500,
+          //           fontSize: 14,
+          //           height: 1.0,
+          //           letterSpacing: 0,
+          //           color: const Color(0x99231F20),
+          //         ),
+          //       ),
+          //       const SizedBox(width: 4),
+          //       GestureDetector(
+          //         onTap: () => Navigator.of(context).push(
+          //           MaterialPageRoute(
+          //               builder: (_) => const InscriptionPage()),
+          //         ),
+          //         child: Text(
+          //           'S\'inscrire',
+          //           style: GoogleFonts.beVietnamPro(
+          //             fontWeight: FontWeight.w500,
+          //             fontSize: 14,
+          //             height: 1.0,
+          //             letterSpacing: 0,
+          //             color: const Color(0xFFF9C20A),
+          //           ),
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          // ),
         ],
       ),
     );
   }
-}
-
-class _ChevronPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFFFFFFF)
-      ..strokeWidth = 1.11
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-
-    final path = Path()
-      ..moveTo(size.width, 0)
-      ..lineTo(0, size.height / 2)
-      ..lineTo(size.width, size.height);
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -717,7 +717,7 @@ class _AcomptePaymentSheetState extends State<_AcomptePaymentSheet> {
       if (!mounted) return;
       sheetNav.pop();
 
-      const baseUrl = 'https://api.solimus.innovimpactdev.cloud';
+      const baseUrl = 'https://api.solimus.sn';
       final bridgeUrl = '$baseUrl/touchpay-bridge.html'
           '?ref=${result.transactionReference}'
           '&apiBaseUrl=$baseUrl';

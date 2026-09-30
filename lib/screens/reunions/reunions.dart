@@ -378,47 +378,63 @@ class _ReunionPageState extends State<ReunionPage> {
     bool active = false,
     VoidCallback? onTap,
   }) {
-    if (active) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SvgPicture.asset(iconPath, width: 20, height: 20),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF6F675E),
+    final childWidget = active
+        ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgPicture.asset(iconPath, width: 18, height: 18),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF6F675E),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SvgPicture.asset(iconPath, width: 22, height: 22),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.85),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          );
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          color: Colors.transparent,
+          height: double.infinity,
+          alignment: Alignment.center,
+          child: childWidget,
         ),
-      );
-    }
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SvgPicture.asset(iconPath, width: 22, height: 22),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -520,8 +536,8 @@ class _ReunionPageState extends State<ReunionPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFFAF9F4),
       bottomNavigationBar: Container(
-        height: 82,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        height: 82 + MediaQuery.of(context).padding.bottom,
+        padding: EdgeInsets.only(left: 8, right: 8, top: 10, bottom: MediaQuery.of(context).padding.bottom + 10),
         decoration: const BoxDecoration(
           color: Color(0xFF6F675E),
           borderRadius: BorderRadius.only(
@@ -533,8 +549,6 @@ class _ReunionPageState extends State<ReunionPage> {
           ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _buildNavItem(
               'assets/icons/accueil.svg',

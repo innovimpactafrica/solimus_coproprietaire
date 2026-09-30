@@ -74,10 +74,16 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           onTap: onToggle,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: SvgPicture.asset(
-              'assets/icons/oeil masquer.svg',
-              fit: BoxFit.contain,
-            ),
+            child: visible
+                ? const Icon(
+                    Icons.visibility_rounded,
+                    color: Color(0xFF6F675E),
+                    size: 22,
+                  )
+                : SvgPicture.asset(
+                    'assets/icons/oeil masquer.svg',
+                    fit: BoxFit.contain,
+                  ),
           ),
         ),
       );

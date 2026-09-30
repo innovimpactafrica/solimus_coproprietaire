@@ -482,7 +482,7 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
             ] else ...[
               // Carte abonnement
               Container(
-                width: 365,
+                width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
@@ -562,9 +562,11 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
                       children: [
                         SvgPicture.asset('assets/icons/renew.svg', width: 16, height: 16),
                         const SizedBox(width: 8),
-                        Text(
-                          d.renouvellementAuto ? 'Renouvellement automatique activé' : 'Renouvellement automatique désactivé',
-                          style: GoogleFonts.inter(fontWeight: FontWeight.w400, fontSize: 13, color: const Color(0xFFBBBBBB)),
+                        Expanded(
+                          child: Text(
+                            d.renouvellementAuto ? 'Renouvellement automatique activé' : 'Renouvellement automatique désactivé',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.w400, fontSize: 13, color: const Color(0xFFBBBBBB)),
+                          ),
                         ),
                       ],
                     ),
@@ -578,7 +580,7 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
                 GestureDetector(
                   onTap: _showPremiumSheet,
                   child: Container(
-                    width: 365,
+                    width: double.infinity,
                     height: 56,
                     decoration: BoxDecoration(color: const Color(0xFF6F675E), borderRadius: BorderRadius.circular(15)),
                     child: Center(
@@ -591,7 +593,7 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
 
               if (d.avantages.isNotEmpty)
                 Container(
-                  width: 365,
+                  width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
                   child: Column(
@@ -623,7 +625,7 @@ class _MonAbonnementPageState extends State<MonAbonnementPage> {
 
               if (d.historiquePaiements.isNotEmpty)
                 Container(
-                  width: 365,
+                  width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
                   child: Column(

@@ -10,14 +10,10 @@ class Splash4 extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          Positioned(
-            top: -5,
-            left: -60,
-            width: 527,
-            height: 943,
+          Positioned.fill(
             child: Image.asset(
               'assets/images/image3.png',
-              fit: BoxFit.fill,
+              fit: BoxFit.cover,
             ),
           ),
           Container(
@@ -43,9 +39,9 @@ class Splash4 extends StatelessWidget {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'Suivez vos paiements facilement',
+                    'Paiements et documents sécurisés',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.jost(
                       fontWeight: FontWeight.w800,
@@ -58,15 +54,15 @@ class Splash4 extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 7.5),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text(
-                    "Consultez vos revenus et demandez vos versements via Wave ou Orange Money.",
+                    'Consultez vos documents de copropriété et effectuez le paiement sécurisé de vos charges en toute sérénité.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.jost(
                       fontWeight: FontWeight.w400,
-                      fontSize: 18,
-                      height: 22 / 18,
-                      letterSpacing: 18 * 0.005,
+                      fontSize: 16,
+                      height: 22 / 16,
+                      letterSpacing: 16 * 0.005,
                       color: const Color(0xFFFFFFFF),
                     ),
                   ),
@@ -107,40 +103,38 @@ class Splash4 extends StatelessWidget {
             ),
           ),
           Positioned(
-            left: 0,
-            right: 0,
+            left: 24,
+            right: 24,
             bottom: 52,
-            child: Center(
-              child: SizedBox(
-                width: 340,
-                height: 58,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const LoginPage()),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF9C20A),
-                    foregroundColor: const Color(0xFF6F675E),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
+            child: SizedBox(
+              width: double.infinity,
+              height: 58,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF9C20A),
+                  foregroundColor: const Color(0xFF6F675E),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
                   ),
-                  child: Text(
-                    'Commencer',
-                    style: GoogleFonts.jost(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                      height: 26 / 18,
-                      letterSpacing: 18 * 0.005,
-                      color: const Color(0xFFFEFEFE),
-                    ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'Commencer',
+                  style: GoogleFonts.jost(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                    height: 26 / 18,
+                    letterSpacing: 18 * 0.005,
+                    color: const Color(0xFFFEFEFE),
                   ),
                 ),
               ),

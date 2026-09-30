@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/intervention_model.dart';
+import '../../models/residence_model.dart';
 import '../../services/coowner_service.dart';
 import '../home/home.dart';
 import 'incident_detail.dart';
@@ -26,8 +27,10 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
 
   final TextEditingController _searchController = TextEditingController();
   String? _statusFilter;
+  int? _residenceFilter;
+  List<ResidenceModel> _residences = [];
 
-  bool get _hasActiveFilter => _statusFilter != null;
+  bool get _hasActiveFilter => _statusFilter != null || _residenceFilter != null;
 
   List<InterventionModel> get _filtered => _interventions;
 
@@ -46,18 +49,24 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
   Future<void> _loadInterventions() async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      final data = await CoOwnerService.getInterventions(
-        search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
-        status: _statusFilter,
-      );
+      final results = await Future.wait([
+        CoOwnerService.getInterventions(
+          search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
+          status: _statusFilter,
+          residenceId: _residenceFilter,
+        ),
+        if (_residences.isEmpty) CoOwnerService.getInterventionResidences(),
+      ]);
       if (!mounted) return;
       setState(() {
+        final data = results[0] as InterventionsResponse;
         _interventions = data.interventions;
         _totalIncidents = data.totalIncidents;
         _enCoursCount = data.enCoursCount;
+        if (_residences.isEmpty) _residences = results[1] as List<ResidenceModel>;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
       setState(() { _isLoading = false; _error = e.toString(); });
     }
@@ -67,9 +76,10 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (_) => StatefulBuilder(
         builder: (ctx, setSheetState) {
-          final options = <String?, String>{
+          final statusOptions = <String?, String>{
             null: 'Tous',
             'PENDING': 'En attente',
             'SYNDIC_ASSIGNED': 'Syndic assigné',
@@ -85,84 +95,113 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
               color: Color(0xFFFAF9F4),
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).padding.bottom + 24),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD1D5DB),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
+                    child: Container(width: 40, height: 4,
+                      decoration: BoxDecoration(color: const Color(0xFFD1D5DB), borderRadius: BorderRadius.circular(2))),
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    'Filtrer par statut',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF2D2520),
-                    ),
-                  ),
+                  Text('Filtrer par statut', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF2D2520))),
                   const SizedBox(height: 12),
-                  ...options.entries.map((entry) {
+                  ...statusOptions.entries.map((entry) {
                     final isSelected = _statusFilter == entry.key;
                     return GestureDetector(
                       onTap: () {
-                        setSheetState(() {});
                         setState(() => _statusFilter = entry.key);
-                        Navigator.pop(ctx);
-                        _loadInterventions();
+                        setSheetState(() {});
                       },
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF6F675E)
-                              : Colors.white,
+                          color: isSelected ? const Color(0xFF6F675E) : Colors.white,
                           borderRadius: BorderRadius.circular(14),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x0D000000),
-                              blurRadius: 10,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
+                          boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 10, offset: Offset(0, 2))],
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              entry.value,
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: isSelected
-                                    ? Colors.white
-                                    : const Color(0xFF2D2520),
-                              ),
-                            ),
-                            if (isSelected)
-                              const Icon(
-                                Icons.check_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
+                            Text(entry.value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600,
+                                color: isSelected ? Colors.white : const Color(0xFF2D2520))),
+                            if (isSelected) const Icon(Icons.check_rounded, color: Colors.white, size: 20),
                           ],
                         ),
                       ),
                     );
                   }),
+                  if (_residences.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text('Filtrer par résidence', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF2D2520))),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() => _residenceFilter = null);
+                        setSheetState(() {});
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: _residenceFilter == null ? const Color(0xFF6F675E) : Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 10, offset: Offset(0, 2))],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Toutes', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600,
+                                color: _residenceFilter == null ? Colors.white : const Color(0xFF2D2520))),
+                            if (_residenceFilter == null) const Icon(Icons.check_rounded, color: Colors.white, size: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ..._residences.map((r) {
+                      final isSelected = _residenceFilter == r.id;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() => _residenceFilter = r.id);
+                          setSheetState(() {});
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFF6F675E) : Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 10, offset: Offset(0, 2))],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(child: Text(r.name, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600,
+                                  color: isSelected ? Colors.white : const Color(0xFF2D2520)))),
+                              if (isSelected) const Icon(Icons.check_rounded, color: Colors.white, size: 20),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: () { Navigator.pop(ctx); _loadInterventions(); },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6F675E),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                        elevation: 0,
+                      ),
+                      child: Text('Appliquer', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -233,47 +272,63 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
     bool active = false,
     VoidCallback? onTap,
   }) {
-    if (active) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SvgPicture.asset(iconPath, width: 20, height: 20),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF6F675E),
+    final childWidget = active
+        ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgPicture.asset(iconPath, width: 18, height: 18),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF6F675E),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SvgPicture.asset(iconPath, width: 22, height: 22),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.85),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          );
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          color: Colors.transparent,
+          height: double.infinity,
+          alignment: Alignment.center,
+          child: childWidget,
         ),
-      );
-    }
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SvgPicture.asset(iconPath, width: 22, height: 22),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -381,6 +436,28 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
                         color: const Color(0xFF2D2520),
                       ),
                     ),
+                    if (incident.fromTenant || (incident.tenantName != null && incident.tenantName!.isNotEmpty)) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.person_outline_rounded, size: 13, color: Color(0xFF1D4ED8)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Émis par ${incident.tenantName != null && incident.tenantName!.isNotEmpty ? incident.tenantName : "le locataire"}',
+                              style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: const Color(0xFF1D4ED8)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Text(
                       incident.location,
@@ -446,8 +523,8 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
         ),
       ),
       bottomNavigationBar: Container(
-        height: 82,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        height: 82 + MediaQuery.of(context).padding.bottom,
+        padding: EdgeInsets.only(left: 8, right: 8, top: 10, bottom: MediaQuery.of(context).padding.bottom + 10),
         decoration: const BoxDecoration(
           color: Color(0xFF6F675E),
           borderRadius: BorderRadius.only(
@@ -463,8 +540,6 @@ class _MesIncidentsPageState extends State<MesIncidentsPage> {
           ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _buildNavItem(
               context,

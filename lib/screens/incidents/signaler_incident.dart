@@ -1,11 +1,11 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/intervention_model.dart';
 import '../../models/residence_model.dart';
-import '../../models/property_model.dart';
 import '../../services/coowner_service.dart';
 
 class SignalerIncidentPage extends StatefulWidget {
@@ -26,17 +26,28 @@ class _SignalerIncidentPageState extends State<SignalerIncidentPage> {
   bool _loadingSpecialties = true;
 
   // Résidences & propriétés
-  List<ResidenceModel> _residences = [];
-  List<PropertyModel> _properties = [];
-  ResidenceModel? _selectedResidence;
-  PropertyModel? _selectedProperty;
+  List<TravauManualResidence> _residences = [];
+  List<ResidenceProperty> _properties = [];
+  TravauManualResidence? _selectedResidence;
+  ResidenceProperty? _selectedProperty;
   bool _loadingResidences = true;
-  bool _loadingProperties = false;
 
   // Parties communes dynamiques
   List<CommonFacilityModel> _commonFacilities = [];
   CommonFacilityModel? _selectedFacility;
   bool _loadingFacilities = false;
+
+  static const _fallbackCommonFacilities = [
+    CommonFacilityModel(id: 1, label: 'Ascenseur'),
+    CommonFacilityModel(id: 2, label: 'Hall d\'entrée'),
+    CommonFacilityModel(id: 3, label: 'Parking / Garages'),
+    CommonFacilityModel(id: 4, label: 'Escaliers & Couloirs'),
+    CommonFacilityModel(id: 5, label: 'Jardin & Cour'),
+    CommonFacilityModel(id: 6, label: 'Toiture & Terrasse'),
+    CommonFacilityModel(id: 7, label: 'Portail & Clôture'),
+    CommonFacilityModel(id: 8, label: 'Local Poubelles'),
+    CommonFacilityModel(id: 9, label: 'Éclairage extérieur'),
+  ];
 
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -80,29 +91,38 @@ class _SignalerIncidentPageState extends State<SignalerIncidentPage> {
     }
   }
 
-  Future<void> _loadProperties(int residenceId) async {
-    setState(() { _loadingProperties = true; _selectedProperty = null; _properties = []; });
-    try {
-      final data = await CoOwnerService.getInterventionProperties(residenceId);
-      if (!mounted) return;
-      setState(() { _properties = data; _loadingProperties = false; });
-    } catch (_) {
-      if (mounted) setState(() => _loadingProperties = false);
-    }
+  /// Extrait les propriétés de la résidence déjà chargée — pas d'appel réseau
+  void _loadProperties(TravauManualResidence residence) {
+    setState(() {
+      _selectedProperty = null;
+      _properties = residence.properties;
+    });
   }
 
+  /// Charge les équipements communs depuis le serveur ou applique les valeurs par défaut
   Future<void> _loadCommonFacilities(int residenceId) async {
-    setState(() { _loadingFacilities = true; _selectedFacility = null; _commonFacilities = []; });
+    setState(() {
+      _selectedFacility = null;
+      _loadingFacilities = true;
+      _commonFacilities = [];
+    });
     try {
-      final data = await CoOwnerService.getCommonFacilities(residenceId);
+      final facs = await CoOwnerService.getCommonFacilities(residenceId);
       if (!mounted) return;
-      setState(() { _commonFacilities = data; _loadingFacilities = false; });
-    } catch (_) {
-      if (mounted) setState(() => _loadingFacilities = false);
+      setState(() {
+        _commonFacilities = facs.isNotEmpty ? facs : _fallbackCommonFacilities;
+        _loadingFacilities = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _commonFacilities = _fallbackCommonFacilities;
+        _loadingFacilities = false;
+      });
     }
   }
 
-  Future<void> _onSubmit(String managementMode) async {
+  Future<void> _onSubmit() async {
     if (_selectedSpecialty == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Veuillez choisir une catégorie')));
       return;
@@ -140,22 +160,16 @@ class _SignalerIncidentPageState extends State<SignalerIncidentPage> {
         commonFacilityId: _locationType == 0 ? _selectedFacility?.id : null,
         specialtyId: _selectedSpecialty!.id,
         locationType: _locationTypes[_locationType],
-        managementMode: managementMode,
         urgencyLevel: _urgencyLevels[_urgency],
         photos: _selectedImage != null ? [_selectedImage!.path] : [],
       );
       if (!mounted) return;
       Navigator.of(context).push(PageRouteBuilder(
-        pageBuilder: (c, a, s) => managementMode == 'OWNER'
-            ? const IncidentSignaleSuccessPage(
-                title: 'Intervention affectée avec succès',
-                subtitle: 'Les prestataires ont bien reçu la mission et vous enverront un devis pour validation avant le démarrage des travaux.',
-              )
-            : const IncidentSignaleSuccessPage(),
+        pageBuilder: (c, a, s) => const IncidentSignaleSuccessPage(),
         transitionsBuilder: (c, anim, s, child) => FadeTransition(opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut), child: child),
         transitionDuration: const Duration(milliseconds: 300),
       ));
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -444,7 +458,7 @@ class _SignalerIncidentPageState extends State<SignalerIncidentPage> {
   }
 
   Widget _buildResidenceDropdown() {
-    return DropdownButtonFormField<ResidenceModel>(
+    return DropdownButtonFormField<TravauManualResidence>(
       value: _selectedResidence,
       hint: Text(
         _loadingResidences ? 'Chargement...' : 'Choisir une résidence',
@@ -463,7 +477,7 @@ class _SignalerIncidentPageState extends State<SignalerIncidentPage> {
           _commonFacilities = [];
         });
         if (v != null) {
-          _loadProperties(v.id);
+          _loadProperties(v);
           _loadCommonFacilities(v.id);
         }
       },
@@ -482,17 +496,17 @@ class _SignalerIncidentPageState extends State<SignalerIncidentPage> {
   }
 
   Widget _buildPropertyDropdown() {
-    return DropdownButtonFormField<PropertyModel>(
+    return DropdownButtonFormField<ResidenceProperty>(
       value: _selectedProperty,
       hint: Text(
-        _loadingProperties ? 'Chargement...' : (_selectedResidence == null ? 'Choisir d\'abord une résidence' : 'Choisir un appartement'),
+        _selectedResidence == null ? 'Choisir d\'abord une résidence' : 'Choisir un appartement',
         style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF9CA3AF)),
       ),
       items: _properties.map((p) => DropdownMenuItem(
         value: p,
-        child: Text(p.name, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF2D2520))),
+        child: Text(p.reference, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF2D2520))),
       )).toList(),
-      onChanged: (_loadingProperties || _selectedResidence == null) ? null : (v) => setState(() => _selectedProperty = v),
+      onChanged: _selectedResidence == null ? null : (v) => setState(() => _selectedProperty = v),
       decoration: InputDecoration(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         filled: true,
@@ -514,7 +528,7 @@ class _SignalerIncidentPageState extends State<SignalerIncidentPage> {
         _selectedResidence == null
             ? 'Choisir d\'abord une résidence'
             : _loadingFacilities
-                ? 'Chargement...'
+                ? 'Chargement des parties communes...'
                 : _commonFacilities.isEmpty
                     ? 'Aucune partie commune'
                     : 'Choisir une partie commune',
@@ -522,9 +536,9 @@ class _SignalerIncidentPageState extends State<SignalerIncidentPage> {
       ),
       items: _commonFacilities.map((f) => DropdownMenuItem(
         value: f,
-        child: Text(f.label, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF2D2520))),
+        child: Text(f.name, style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF2D2520))),
       )).toList(),
-      onChanged: (_loadingFacilities || _selectedResidence == null) ? null : (v) => setState(() => _selectedFacility = v),
+      onChanged: (_selectedResidence == null || _loadingFacilities) ? null : (v) => setState(() => _selectedFacility = v),
       decoration: InputDecoration(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         filled: true,
@@ -772,7 +786,7 @@ class _SignalerIncidentPageState extends State<SignalerIncidentPage> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : () => _onSubmit(_locationType == 1 ? 'OWNER' : 'SYNDIC'),
+                      onPressed: _isSubmitting ? null : _onSubmit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFF9A826),
                         foregroundColor: Colors.white,
@@ -782,7 +796,7 @@ class _SignalerIncidentPageState extends State<SignalerIncidentPage> {
                       child: _isSubmitting
                           ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                           : Text(
-                              _locationType == 1 ? 'Envoyer aux prestataires' : 'Envoyer le signalement',
+                              'Soumettre la demande',
                               style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
                             ),
                     ),
@@ -792,17 +806,13 @@ class _SignalerIncidentPageState extends State<SignalerIncidentPage> {
                     width: double.infinity,
                     height: 56,
                     child: OutlinedButton(
-                      onPressed: _isSubmitting
-                          ? null
-                          : _locationType == 1
-                              ? () => _onSubmit('SYNDIC')
-                              : () => Navigator.of(context).pop(),
+                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                         side: const BorderSide(color: Color(0xFF6F675E), width: 1),
                       ),
                       child: Text(
-                        _locationType == 1 ? 'Envoyer au syndic' : 'Annuler',
+                        'Annuler',
                         style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500, color: const Color(0xFF6A7282)),
                       ),
                     ),

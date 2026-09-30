@@ -111,13 +111,9 @@ class _PaiementSuccessPageState extends State<PaiementSuccessPage> {
       body: Stack(
         children: [
           // Confetti background
-          Positioned(
-            top: 41,
-            left: 19,
+          Positioned.fill(
             child: Image.asset(
               'assets/images/scale.png',
-              width: 393,
-              height: 852,
               fit: BoxFit.cover,
             ),
           ),
@@ -164,6 +160,7 @@ class _PaiementSuccessPageState extends State<PaiementSuccessPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 36),
+                  _infoRow('Charge', widget.chargeTitle),
                   _infoRow('Montant payé', '${widget.amount} FCFA', bold: true),
                   _infoRow('Méthode', widget.methodName),
                   _infoRow('Date', date),
